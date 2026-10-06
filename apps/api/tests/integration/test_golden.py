@@ -99,4 +99,5 @@ def test_an_approved_benchmark_runs_in_the_real_sandbox_and_validates_the_index(
     import psycopg
 
     with psycopg.connect("postgresql://qd_bench:qd_bench@localhost:5434/postgres") as conn:
-        assert conn.execute("SELECT count(*) FROM pg_database WHERE datname LIKE 'bench\_%'").fetchone()[0] == 0
+        leftover = conn.execute(r"SELECT count(*) FROM pg_database WHERE datname LIKE 'bench\_%'").fetchone()[0]
+        assert leftover == 0
