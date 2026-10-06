@@ -112,3 +112,46 @@ def test_fingerprint_ignores_numbers_but_not_shape(load_plan):
     assert parse_explain(raw).fingerprint == a.fingerprint
     raw[0]["Plan"]["Plans"][0].update({"Node Type": "Index Scan", "Index Name": "idx_orders_customer"})
     assert parse_explain(raw).fingerprint != a.fingerprint
+
+
+# ---- review findings I3 / I4: inclusive buffer counts and parallel workers --------------------------------------------
+
+from helpers import node, plan_of  # noqa: E402
+
+
+def test_temp_block_counts_are_reported_exclusive_of_children():
+    """PostgreSQL's buffer/temp counters include everything below the node, so a quicksort above a spilling hash join
+    reports the join's temp blocks too. The exclusive values attribute them to the node that actually spilled."""
+    join = node("Hash Join", temp_written=900, temp_read=800, plans=[node("Seq Scan"), node("Hash", temp_written=0)])
+    sort = node("Sort", sort_method="quicksort", temp_written=900, temp_read=800, plans=[join])
+    plan = plan_of(sort)
+    parsed_sort, parsed_join = plan.root, plan.root.children[0]
+    assert (parsed_sort.temp_written_blocks, parsed_sort.exclusive_temp_written_blocks) == (900, 0)
+    assert (parsed_sort.temp_read_blocks, parsed_sort.exclusive_temp_read_blocks) == (800, 0)
+    assert (parsed_join.exclusive_temp_written_blocks, parsed_join.exclusive_temp_read_blocks) == (900, 800)
+
+
+def test_leaf_and_planner_only_nodes_have_sensible_exclusive_temp_values():
+    assert plan_of(node("Seq Scan", temp_written=5)).root.exclusive_temp_written_blocks == 5
+    assert plan_of(node("Seq Scan", explain_only=True)).root.exclusive_temp_written_blocks is None
+
+
+def test_parallel_workers_do_not_inflate_times():
+    """Under a Gather, a node's per-loop time is an average and its loop count is the number of processes (workers + the
+    leader); multiplying the two gives summed CPU time, not elapsed time."""
+    scan = node("Seq Scan", time=90.0, loops=3, rows=1000)
+    gather = node("Gather", time=100.0, loops=1, plans=[scan], **{"Workers Launched": 2})
+    plan = plan_of(gather, execution_time=100.0)
+    parsed_gather, parsed_scan = plan.root, plan.root.children[0]
+    assert parsed_scan.total_time_ms == pytest.approx(90.0)  # not 270
+    assert parsed_scan.exclusive_time_ms == pytest.approx(90.0)
+    assert parsed_gather.total_time_ms == pytest.approx(100.0)
+    assert parsed_gather.exclusive_time_ms == pytest.approx(10.0)
+
+
+def test_total_time_without_parallelism_is_time_times_loops():
+    inner = node("Seq Scan", time=0.5, loops=1000)
+    plan = plan_of(node("Nested Loop", time=900.0, plans=[node("Seq Scan", time=2.0), inner]))
+    assert plan.root.children[1].total_time_ms == pytest.approx(500.0)
+    assert plan.root.total_time_ms == pytest.approx(900.0)
+    assert plan_of(node("Seq Scan", explain_only=True)).root.total_time_ms is None

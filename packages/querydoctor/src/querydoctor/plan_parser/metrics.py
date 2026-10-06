@@ -27,6 +27,13 @@ def total_time_ms(actual_time_ms: float | None, loops: int | None) -> float | No
     return actual_time_ms * loops
 
 
+def exclusive_blocks(own: int | None, children: list[int | None]) -> int | None:
+    """Blocks attributable to a node itself: PostgreSQL's counters include all children."""
+    if own is None:
+        return None
+    return max(own - sum(c or 0 for c in children), 0)
+
+
 def exclusive_time_ms(own_total: float | None, child_totals: list[float | None]) -> float | None:
     if own_total is None:
         return None

@@ -23,7 +23,7 @@ from psycopg import sql as psql
 from querydoctor.benchmark.checksum import has_order_by, result_checksum
 from querydoctor.benchmark.models import BenchmarkConfig, BenchmarkResult, RunSample
 from querydoctor.benchmark.reliability import compare_outputs, reliability_warnings
-from querydoctor.benchmark.sandbox import Sandbox
+from querydoctor.benchmark.sandbox import Sandbox, SandboxError
 from querydoctor.benchmark.stats import improvement_pct, summarize
 from querydoctor.db import DbError, explain, guarded_connection
 from querydoctor.plan_parser import iter_nodes, parse_explain
@@ -110,14 +110,19 @@ def run_benchmark(
             return _measure_both(conn, sql, params, candidate_ddl, table, config, on_progress, check, template)
     except BenchmarkFailed:
         raise
+    except SandboxError as exc:
+        raise BenchmarkFailed(f"The benchmark copy could not be prepared ({exc}). Try again in a moment.") from exc
     except (psycopg.Error, DbError) as exc:
         message = getattr(getattr(exc, "diag", None), "message_primary", None) or str(exc)
         raise BenchmarkFailed(f"The benchmark failed: {message}") from exc
     finally:
-        on_progress("teardown")
+        # Order matters: dropping the clone and releasing the slot must never depend on progress reporting working.
         with suppress(Exception):
             sandbox.drop()
-        slot.close()
+        with suppress(Exception):
+            slot.close()
+        with suppress(Exception):
+            on_progress("teardown")
 
 
 def _runs(conn, sql, params, n, warmups, check, on_progress, warm_stage, measure_stage):

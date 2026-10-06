@@ -217,3 +217,47 @@ def test_every_fixture_plan_diagnoses_without_crashing(path):
 def test_zero_row_estimates_never_divide_by_zero():
     root = node("Index Scan", est_rows=0, rows=0, removed=0, filter="(x = 1)", index_cond="(y = 2)", loops=1)
     run_diagnosis(make_ctx(root, query=STAR))
+
+
+# ---- review finding I3: spill rules must use exclusive temp counts ----------------------------------------------------
+
+def test_an_in_memory_sort_above_a_spilling_hash_join_is_not_reported_as_a_sort_spill():
+    join = node("Hash Join", temp_written=900, plans=[node("Seq Scan"), node("Hash", hash_batches=1)])
+    root = node("Sort", sort_method="quicksort", temp_written=900, plans=[join])
+    findings = run_diagnosis(make_ctx(root, execution_time=1000.0))
+    spill_ids = {(f.rule_id, tuple(f.node_ids)) for f in findings if f.rule_id in ("PG_SORT_SPILL", "PG_HASH_SPILL")}
+    assert spill_ids == {("PG_HASH_SPILL", ("0.0",))}
+
+
+def test_a_hash_join_above_a_spilling_sort_is_not_reported_as_a_hash_spill():
+    sort = node("Sort", sort_method="external merge", temp_written=700)
+    root = node("Hash Join", temp_written=700, plans=[sort, node("Hash", hash_batches=1)])
+    ids = {(f.rule_id, tuple(f.node_ids)) for f in run_diagnosis(make_ctx(root, execution_time=1000.0))
+           if f.rule_id in ("PG_SORT_SPILL", "PG_HASH_SPILL")}
+    assert ids == {("PG_SORT_SPILL", ("0.0",))}
+
+
+def test_parallel_plans_attribute_time_to_the_right_node():
+    scan = node("Seq Scan", time=90.0, loops=3, relation="orders", rows=1000)
+    root = node("Gather", time=100.0, plans=[scan], **{"Workers Launched": 2})
+    ctx = make_ctx(root, execution_time=100.0)
+    assert ctx.plan.root.children[0].exclusive_time_ms == pytest.approx(90.0)
+
+
+# ---- review finding I6: diagnosis must stay fast on large plans -------------------------------------------------------
+
+def _join_chain(depth: int) -> dict:
+    root = node("Seq Scan", relation="t0", cost=5_000.0, filter="(a = 0)")
+    for i in range(1, depth + 1):
+        root = node("Nested Loop", cost=5_000.0 + i, plans=[node("Seq Scan", relation=f"t{i}", cost=5_000.0, filter=f"(a = {i})"), root])
+    return root
+
+
+@pytest.mark.parametrize("depth", [150])
+def test_diagnosing_a_deep_plan_takes_seconds_not_minutes(depth):
+    import time
+
+    ctx = make_ctx(_join_chain(depth), execution_time=1000.0)
+    started = time.monotonic()
+    run_diagnosis(ctx)
+    assert time.monotonic() - started < 3.0

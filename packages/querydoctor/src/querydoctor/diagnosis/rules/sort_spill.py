@@ -10,7 +10,8 @@ class SortSpill:
 
     def evaluate(self, node: PlanNode, context: AnalysisContext) -> Finding | None:
         t = context.thresholds
-        spilled = "external" in (node.sort_method or "").lower() or (node.temp_written_blocks or 0) > 0
+        # exclusive: PostgreSQL's temp counters include children, so a quicksort above a spilling join must not match
+        spilled = "external" in (node.sort_method or "").lower() or (node.exclusive_temp_written_blocks or 0) > 0
         if not spilled:
             return None
         total = context.plan_total_ms()
@@ -20,11 +21,11 @@ class SortSpill:
             severity="critical" if share is not None and share >= t.sort_spill_critical_share else "warning",
             title="Sort spilled to disk",
             summary=f"Sort used '{node.sort_method or 'temporary files'}' and wrote "
-            f"{node.temp_written_blocks or 0:,} temporary blocks.",
+            f"{node.exclusive_temp_written_blocks or 0:,} temporary blocks.",
             evidence={
                 "sort_method": node.sort_method,
-                "temp_written_blocks": node.temp_written_blocks,
-                "temp_read_blocks": node.temp_read_blocks,
+                "temp_written_blocks": node.exclusive_temp_written_blocks,
+                "temp_read_blocks": node.exclusive_temp_read_blocks,
                 "sort_space_used_kb": node.raw.get("Sort Space Used"),
                 "exclusive_time_ms": node.exclusive_time_ms,
                 "time_share": share,

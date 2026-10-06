@@ -14,7 +14,7 @@ class HashSpill:
 
     def evaluate(self, node: PlanNode, context: AnalysisContext) -> Finding | None:
         t = context.thresholds
-        temp = node.temp_written_blocks or 0
+        temp = node.exclusive_temp_written_blocks or 0  # children's temp blocks are counted in the parent's totals
         if node.node_type == "Hash":
             spilled = (node.hash_batches or 0) > 1 or temp > 0
         else:  # a Hash Join is reported only when its Hash child did not already explain the spill
@@ -33,7 +33,7 @@ class HashSpill:
                 "hash_batches": node.hash_batches,
                 "original_hash_batches": node.raw.get("Original Hash Batches"),
                 "peak_memory_kb": node.raw.get("Peak Memory Usage"),
-                "temp_written_blocks": node.temp_written_blocks,
+                "temp_written_blocks": node.exclusive_temp_written_blocks,
                 "time_share": share,
                 "work_mem": context.plan.settings.get("work_mem"),
             },

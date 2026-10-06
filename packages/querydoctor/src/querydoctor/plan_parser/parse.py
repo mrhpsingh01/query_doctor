@@ -13,8 +13,18 @@ def _as_int(value: Any) -> int | None:
     return int(value) if value is not None else None
 
 
-def _build(raw: dict[str, Any], node_id: str, parent_id: str | None) -> PlanNode:
-    children = [_build(child, f"{node_id}.{i}", node_id) for i, child in enumerate(raw.get("Plans", []))]
+PARALLEL_PARENTS = ("Gather", "Gather Merge")
+
+
+def _build(raw: dict[str, Any], node_id: str, parent_id: str | None, parallelism: int = 1) -> PlanNode:
+    # Below a Gather, "Actual Loops" counts processes (workers + the leader) and each loop's time is an average, so
+    # time x loops would be summed CPU time. Dividing by the number of processes gives elapsed time.
+    child_parallelism = parallelism
+    if raw["Node Type"] in PARALLEL_PARENTS:
+        child_parallelism = max(int(raw.get("Workers Launched") or 0), 0) + 1
+    children = [
+        _build(child, f"{node_id}.{i}", node_id, child_parallelism) for i, child in enumerate(raw.get("Plans", []))
+    ]
 
     has_actuals = "Actual Total Time" in raw
     loops = _as_int(raw.get("Actual Loops")) if has_actuals else None
@@ -23,8 +33,9 @@ def _build(raw: dict[str, Any], node_id: str, parent_id: str | None) -> PlanNode
     estimated_rows = float(raw.get("Plan Rows", 0))
     removed = _as_int(raw.get("Rows Removed by Filter"))
 
-    own_total = metrics.total_time_ms(actual_time, loops)
-    child_totals = [metrics.total_time_ms(c.actual_time_ms, c.loops) for c in children]
+    summed = metrics.total_time_ms(actual_time, loops)
+    own_total = None if summed is None else summed / parallelism
+    child_totals = [c.total_time_ms for c in children]
 
     shared_hit = _as_int(raw.get("Shared Hit Blocks"))
     shared_read = _as_int(raw.get("Shared Read Blocks"))
@@ -57,6 +68,9 @@ def _build(raw: dict[str, Any], node_id: str, parent_id: str | None) -> PlanNode
         error_ratio=metrics.error_ratio(estimated_rows, actual_rows, loops),
         filter_waste=metrics.filter_waste(actual_rows, removed, loops),
         exclusive_time_ms=metrics.exclusive_time_ms(own_total, child_totals),
+        total_time_ms=own_total,
+        exclusive_temp_written_blocks=metrics.exclusive_blocks(temp_written, [c.temp_written_blocks for c in children]),
+        exclusive_temp_read_blocks=metrics.exclusive_blocks(temp_read, [c.temp_read_blocks for c in children]),
         io_pressure=metrics.io_pressure(temp_read, temp_written, shared_read, shared_hit),
         raw={k: v for k, v in raw.items() if k != "Plans"},
         children=children,

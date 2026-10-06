@@ -8,8 +8,9 @@ from pydantic import BaseModel, Field
 class PlanNode(BaseModel):
     """One operator of a normalized plan.
 
-    Row counts, times and block counts are reported exactly as PostgreSQL reports them: *per loop*
-    (multiply by ``loops`` for totals). ``exclusive_time_ms`` is already a total.
+    Row counts and times are reported as PostgreSQL reports them: *per loop* (``total_time_ms`` is the elapsed total,
+    already corrected for parallel workers; ``exclusive_time_ms`` is a total too). Buffer and temp block counts are
+    *totals that include every child node*, so rules use the ``exclusive_temp_*`` values to find the node that spilled.
     """
 
     node_id: str  # tree path: "0", "0.1", "0.1.0"
@@ -42,6 +43,9 @@ class PlanNode(BaseModel):
     error_ratio: float | None = None
     filter_waste: float | None = None
     exclusive_time_ms: float | None = None
+    total_time_ms: float | None = None  # elapsed time across all loops, corrected for parallel workers
+    exclusive_temp_written_blocks: int | None = None  # temp blocks written by this node itself (children excluded)
+    exclusive_temp_read_blocks: int | None = None
     io_pressure: Literal["none", "memory", "disk", "temp"] = "none"
 
     raw: dict[str, Any] = Field(default_factory=dict)  # the node's raw JSON without child plans

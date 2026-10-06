@@ -177,3 +177,35 @@ def test_concurrency_is_capped_and_recovers_when_a_slot_frees():
     finally:
         for h in holders:
             h.close()
+
+
+# ---- review finding I8: teardown must not depend on progress reporting --------------------------------------------------
+
+def test_the_sandbox_is_dropped_even_when_progress_reporting_fails_at_teardown():
+    def flaky(stage):
+        if stage == "teardown":
+            raise RuntimeError("the metadata database is unreachable")
+
+    result = run_benchmark(BENCH_ADMIN_DSN, Q1.sql, Q1.params, COVERING, FAST, on_progress=flaky)
+    assert result.checksum_match is True  # the benchmark itself succeeded; the autouse fixture asserts nothing leaked
+
+
+def test_the_sandbox_is_dropped_when_a_progress_callback_fails_mid_run():
+    def boom(stage):
+        if stage == "creating_index":
+            raise RuntimeError("the metadata database is unreachable")
+
+    with pytest.raises(RuntimeError):
+        run_benchmark(BENCH_ADMIN_DSN, Q1.sql, Q1.params, COVERING, FAST, on_progress=boom)
+
+
+def test_a_busy_template_database_is_a_readable_failure_not_an_internal_error(monkeypatch):
+    from querydoctor.benchmark.sandbox import Sandbox, SandboxError
+
+    def busy(self):
+        raise SandboxError("could not clone the template database (it stayed busy)")
+
+    monkeypatch.setattr(Sandbox, "create", busy)
+    with pytest.raises(BenchmarkFailed) as exc:
+        run_benchmark(BENCH_ADMIN_DSN, Q1.sql, Q1.params, COVERING, FAST)
+    assert "try again" in str(exc.value).lower()

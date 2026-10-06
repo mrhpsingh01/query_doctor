@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any, Literal, Protocol
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PrivateAttr
 
 from querydoctor.plan_parser import ParsedPlan, PlanNode
 from querydoctor.plan_parser.metrics import total_time_ms
@@ -53,6 +54,14 @@ class AnalysisContext(BaseModel):
     schema_: SchemaSnapshot = Field(default_factory=SchemaSnapshot)
     query: ValidatedQuery | None = None
     thresholds: Thresholds = Field(default_factory=Thresholds)
+
+    _memo: dict[str, Any] = PrivateAttr(default_factory=dict)
+
+    def memo(self, key: str, compute: Callable[[], Any]) -> Any:
+        """Per-analysis cache for rules that need a whole-plan computation (done once, not once per node)."""
+        if key not in self._memo:
+            self._memo[key] = compute()
+        return self._memo[key]
 
     def plan_total_ms(self) -> float | None:
         """Wall time of the whole executed plan, or None for planner-only plans."""

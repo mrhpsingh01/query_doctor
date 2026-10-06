@@ -31,6 +31,7 @@ class BenchmarkDeps:
     bench_dsn: str
     bus: EventBus
     run: Callable = run_benchmark  # replaceable in tests
+    janitor: Callable | None = None  # housekeeping before each job (stale sandboxes / jobs); None in tests
 
 
 def _key(run_id: int) -> str:
@@ -46,6 +47,11 @@ def _finish(session: Session, deps: BenchmarkDeps, run: BenchmarkRun, status: st
 
 
 def run_benchmark_job(session: Session, run_id: int, deps: BenchmarkDeps) -> None:
+    if deps.janitor is not None:
+        try:
+            deps.janitor()
+        except Exception:
+            log.warning("housekeeping before benchmark %s failed", run_id, exc_info=True)
     run = session.get(BenchmarkRun, run_id)
     if run is None or run.status != "queued":
         return

@@ -13,4 +13,6 @@ celery_app.conf.update(
     broker_connection_retry_on_startup=True,
     worker_prefetch_multiplier=1,
     task_acks_late=True,
+    task_soft_time_limit=240,  # a pathological plan must not hold a worker slot forever
+    task_time_limit=300,
 )

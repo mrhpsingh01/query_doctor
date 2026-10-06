@@ -10,7 +10,7 @@ from app.services.benchmarks import BenchmarkDeps, run_benchmark_job
 from app.services.events import get_event_bus
 from app.services.pipeline import PipelineDeps, run_analysis_pipeline
 from app.workers.celery_app import celery_app
-from app.workers.janitor import cleanup_stale_sandboxes
+from app.workers.janitor import cleanup_stale_sandboxes, fail_stale_jobs
 
 
 @lru_cache
@@ -37,7 +37,11 @@ def run_analysis(analysis_id: int) -> None:
 def _benchmark_runtime():
     settings = get_settings()
     sessionmaker = make_sessionmaker(make_engine(settings.database_url))
-    return sessionmaker, BenchmarkDeps(bench_dsn=settings.bench_dsn, bus=get_event_bus(settings.redis_url))
+    def janitor() -> None:
+        cleanup_stale_sandboxes(settings.bench_dsn)
+        fail_stale_jobs(sessionmaker)
+
+    return sessionmaker, BenchmarkDeps(bench_dsn=settings.bench_dsn, bus=get_event_bus(settings.redis_url), janitor=janitor)
 
 
 @celery_app.task(name="qd.run_benchmark")
@@ -49,4 +53,5 @@ def run_benchmark(run_id: int) -> None:
 
 @worker_ready.connect
 def _clean_up_after_crashed_workers(**_kwargs) -> None:
-    cleanup_stale_sandboxes(get_settings().bench_dsn)
+    sessionmaker, deps = _benchmark_runtime()
+    deps.janitor()
