@@ -56,6 +56,9 @@ def _plan(f: _Facts) -> list[tuple[str, list[Fact]]]:
     seq = f.get("Sequential scans in the plan")
     if seq:
         out.append((f"The plan contains {_num(seq.value)} sequential scan(s), which read a whole table.", [seq]))
+    collscan = f.get("Collection scans in the plan")
+    if collscan:
+        out.append((f"The plan contains {_num(collscan.value)} collection scan(s), which read every document of a collection.", [collscan]))
     cost, rows = f.get("Estimated plan cost"), f.get("Estimated rows returned")
     if not exec_time and cost and rows:
         out.append((f"PostgreSQL estimates the plan cost at {_num(cost.value)} and expects about {_num(rows.value)} rows to be returned.", [cost, rows]))

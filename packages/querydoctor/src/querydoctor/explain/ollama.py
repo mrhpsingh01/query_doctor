@@ -13,7 +13,7 @@ import httpx
 
 from querydoctor.explain.facts import EvidencePackage
 
-SYSTEM_PROMPT = """You explain the results of a PostgreSQL performance analysis to a developer.
+SYSTEM_PROMPT = """You explain the results of a database performance analysis (PostgreSQL or MongoDB) to a developer.
 Rules:
 - Use only the facts provided. Never invent a number, a table, a column, a timing or a percentage.
 - Every sentence must cite the facts it relies on, written like [F3] or [F2, F5].

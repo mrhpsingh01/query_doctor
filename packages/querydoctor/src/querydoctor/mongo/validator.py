@@ -200,6 +200,32 @@ def normalize_shape(query: MongoQuery) -> str:
     return json.dumps(_shape(spec), separators=(",", ":"), ensure_ascii=False)
 
 
+def parametrized_spec(query: MongoQuery) -> str:
+    """The query as a runnable JSON spec whose every literal is a numbered ``{"$param": n}`` placeholder.
+
+    Used where real values must not be kept (the workload's sample query): the spec says which fields are compared and how,
+    and the person supplies the values when they analyze it. Its fingerprint equals the query's."""
+    spec: dict[str, Any] = {query.kind: query.collection}
+    if query.kind == "find":
+        spec.update(filter=query.filter, sort=query.sort, projection=query.projection, limit=query.limit, skip=query.skip)
+    else:
+        spec["pipeline"] = query.pipeline
+    counter = iter(range(1, 10_000))
+
+    def number(value: Any) -> Any:
+        if isinstance(value, dict):
+            return {k: number(v) for k, v in value.items()}
+        if isinstance(value, list):
+            return [number(v) for v in value]
+        return {"$param": next(counter)} if value == "?" else value
+
+    shaped = number(_shape({k: v for k, v in spec.items() if v is not None}))
+    for key in ("limit", "skip"):  # a page size is not a value of the data, and these keys take plain integers only
+        if getattr(query, key, None) is not None:
+            shaped[key] = getattr(query, key)
+    return json.dumps(shaped, separators=(", ", ": "), ensure_ascii=False)
+
+
 def _parse(text: str, max_bytes: int, max_depth: int) -> dict[str, Any]:
     if not isinstance(text, str) or not text.strip():
         raise _fail("invalid_json", 'The query is empty. Write a JSON object such as {"find": "orders", "filter": {}}.')

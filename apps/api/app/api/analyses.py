@@ -94,7 +94,9 @@ def cancel_analysis(analysis_id: int, request: Request, session: Session = Depen
     analysis = _get_or_404(session, analysis_id)
     if analysis.status in TERMINAL_STATUSES:
         raise HTTPException(409, detail=f"analysis already {analysis.status}")
-    pid = analysis.backend_pid
+    # The pid belongs to the server the analysis ran on. For a custom connection that is not the sample target, and a
+    # same-numbered backend there must never be signalled: the statement timeout bounds the remote statement instead.
+    pid = analysis.backend_pid if analysis.connection_id is None else None
     analysis.cancel_requested = True
     analysis.status = "cancelled"
     analysis.finished_at = datetime.now(UTC)

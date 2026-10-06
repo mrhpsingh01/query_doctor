@@ -17,7 +17,7 @@ from typing import Any
 from bson import json_util
 from pymongo.database import Database
 
-from querydoctor.mongo.validator import MongoValidationError, validate_mongo
+from querydoctor.mongo.validator import MongoValidationError, parametrized_spec, validate_mongo
 from querydoctor.workload.models import WorkloadQuery
 from querydoctor.workload.pgss import Z95
 
@@ -60,15 +60,13 @@ def read_profile(db: Database, limit: int = DEFAULT_LIMIT) -> tuple[list[Workloa
             continue
         group = groups.setdefault(
             vq.fingerprint,
-            {"vq": vq, "docs": 0, "keys": 0, "rows": 0, "heaviest": -1.0, "sample": vq.canonical_json},
+            {"vq": vq, "docs": 0, "keys": 0, "rows": 0, "sample": parametrized_spec(vq.query)},  # never the logged values
         )
         millis = float(entry.get("millis", 0))
         times[vq.fingerprint].append(millis)
         group["docs"] += int(entry.get("docsExamined", 0) or 0)
         group["keys"] += int(entry.get("keysExamined", 0) or 0)
         group["rows"] += int(entry.get("nreturned", 0) or 0)
-        if millis > group["heaviest"]:
-            group["heaviest"], group["sample"] = millis, vq.canonical_json
     out: list[WorkloadQuery] = []
     for fingerprint, g in groups.items():
         values = times[fingerprint]

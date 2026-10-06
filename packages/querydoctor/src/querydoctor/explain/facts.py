@@ -86,12 +86,16 @@ def _plan_facts(c: _Collector, analysis: dict) -> None:
         if plan.get("planning_time_ms") is not None:
             c.add("plan", "Planning time", plan["planning_time_ms"], "ms", text=f"Planning took {_num(plan['planning_time_ms'])} ms.")
     c.add("plan", "Plan operators", len(nodes), text=f"The plan has {len(nodes)} operators.", derivation="count")
-    c.add("plan", "Sequential scans in the plan", sum(1 for n in nodes if n["node_type"] == "Seq Scan"), derivation="count",
-          text=f"The plan has {sum(1 for n in nodes if n['node_type'] == 'Seq Scan')} sequential scan(s).")
     root = plan["root"]
-    c.add("plan", "Estimated plan cost", root["estimated_cost"], text=f"PostgreSQL estimates the plan cost at {_num(root['estimated_cost'])}.")
-    c.add("plan", "Estimated rows returned", root["estimated_rows"], "rows",
-          text=f"PostgreSQL expects about {_num(root['estimated_rows'])} rows to be returned.")
+    if plan.get("engine") == "mongodb":  # MongoDB has no cost model: its plans carry measured work, never estimates
+        collscans = sum(1 for n in nodes if n["node_type"] == "COLLSCAN")
+        c.add("plan", "Collection scans in the plan", collscans, derivation="count", text=f"The plan has {collscans} collection scan(s).")
+    else:
+        c.add("plan", "Sequential scans in the plan", sum(1 for n in nodes if n["node_type"] == "Seq Scan"), derivation="count",
+              text=f"The plan has {sum(1 for n in nodes if n['node_type'] == 'Seq Scan')} sequential scan(s).")
+        c.add("plan", "Estimated plan cost", root["estimated_cost"], text=f"PostgreSQL estimates the plan cost at {_num(root['estimated_cost'])}.")
+        c.add("plan", "Estimated rows returned", root["estimated_rows"], "rows",
+              text=f"PostgreSQL expects about {_num(root['estimated_rows'])} rows to be returned.")
     if executed:
         timed = [n for n in nodes if n.get("exclusive_time_ms") is not None]
         if timed:

@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 
 import pytest
@@ -76,9 +77,18 @@ def test_different_shapes_are_kept_apart_and_ranked_by_total_time():
     assert queries[0].fingerprint != queries[1].fingerprint
 
 
-def test_the_heaviest_member_provides_the_sample_query():
-    queries, _ = read(find(1, 5), find(99, 90), find(3, 10))
-    assert '"customer_id":99' in queries[0].sample_sql.replace(" ", "")
+def test_the_sample_query_carries_placeholders_never_the_literals_of_real_traffic():
+    secret = entry({"find": "orders", "filter": {"customer_id": 4711, "email": "alice@example.com", "status": {"$in": ["a", "b"]}}, "limit": 5})
+    queries, _ = read(secret, find(99, 90))
+    for q in queries:
+        for leaked in ("4711", "alice", "example.com", "99"):
+            assert leaked not in q.sample_sql, (leaked, q.sample_sql)
+    sample = next(q for q in queries if "email" in q.sample_sql).sample_sql
+    # it is a runnable spec: the placeholders are numbered, and the shape's fingerprint is unchanged
+    spec = json.loads(sample)
+    assert spec["filter"]["customer_id"] == {"$param": 1} and spec["filter"]["email"] == {"$param": 2}
+    vq = validate_mongo(sample, [1, "e", "s"])
+    assert vq.fingerprint == next(q.fingerprint for q in queries if "email" in q.sample_sql)
 
 
 def test_system_internal_and_non_read_commands_are_ignored_and_counted():

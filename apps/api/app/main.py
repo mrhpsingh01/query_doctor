@@ -4,6 +4,8 @@ from collections.abc import Callable
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from querydoctor.explain import OllamaExplainer
 from querydoctor.ranking.predictor import Predictor
 from sqlalchemy import select
@@ -94,6 +96,14 @@ def create_app(
 
     app = FastAPI(title="QueryDoctor API", version="0.1.0", lifespan=lifespan)
     app.state.settings = settings
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_error(_request, exc: RequestValidationError):
+        # FastAPI's default body echoes the submitted value of each failing field (and, for a missing field, the whole
+        # body): that would send a password or a query back to the caller. Say what to fix, never what was sent.
+        errors = [{"loc": list(e.get("loc", ())), "msg": e.get("msg", ""), "type": e.get("type", "")} for e in exc.errors()]
+        return JSONResponse(status_code=422, content={"detail": errors})
+
     app.state.bus = bus
     app.state.pipeline_deps = deps
     app.state.benchmark_deps = bench_deps
