@@ -1,6 +1,6 @@
 import psycopg
 import pytest
-from conftest import TARGET_ADMIN_DSN, TARGET_RO_DSN
+from labdsn import TARGET_ADMIN_DSN, TARGET_RO_DSN
 
 from querydoctor.db import (
     ExplainFailed,

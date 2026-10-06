@@ -1,6 +1,6 @@
 import psycopg
 import pytest
-from conftest import TARGET_ADMIN_DSN
+from labdsn import TARGET_ADMIN_DSN
 
 from querydoctor.lab.seed import seed
 
