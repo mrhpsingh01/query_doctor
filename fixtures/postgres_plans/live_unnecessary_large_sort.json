@@ -1,0 +1,101 @@
+[
+  {
+    "Plan": {
+      "Node Type": "Sort",
+      "Parallel Aware": false,
+      "Async Capable": false,
+      "Startup Cost": 44943.09,
+      "Total Cost": 45694.22,
+      "Plan Rows": 300450,
+      "Plan Width": 26,
+      "Actual Startup Time": 385.878,
+      "Actual Total Time": 411.348,
+      "Actual Rows": 299219,
+      "Actual Loops": 1,
+      "Output": [
+        "id",
+        "customer_id",
+        "payload",
+        "created_at"
+      ],
+      "Sort Key": [
+        "events.payload"
+      ],
+      "Sort Method": "external merge",
+      "Sort Space Used": 12336,
+      "Sort Space Type": "Disk",
+      "Shared Hit Blocks": 2424,
+      "Shared Read Blocks": 1747,
+      "Shared Dirtied Blocks": 0,
+      "Shared Written Blocks": 0,
+      "Local Hit Blocks": 0,
+      "Local Read Blocks": 0,
+      "Local Dirtied Blocks": 0,
+      "Local Written Blocks": 0,
+      "Temp Read Blocks": 1542,
+      "Temp Written Blocks": 1547,
+      "WAL Records": 0,
+      "WAL FPI": 0,
+      "WAL Bytes": 0,
+      "Plans": [
+        {
+          "Node Type": "Seq Scan",
+          "Parent Relationship": "Outer",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Relation Name": "events",
+          "Schema": "public",
+          "Alias": "events",
+          "Startup Cost": 0.0,
+          "Total Cost": 10418.0,
+          "Plan Rows": 300450,
+          "Plan Width": 26,
+          "Actual Startup Time": 0.022,
+          "Actual Total Time": 49.439,
+          "Actual Rows": 299219,
+          "Actual Loops": 1,
+          "Output": [
+            "id",
+            "customer_id",
+            "payload",
+            "created_at"
+          ],
+          "Filter": "(events.event_type = 'page_view'::text)",
+          "Rows Removed by Filter": 200781,
+          "Shared Hit Blocks": 2421,
+          "Shared Read Blocks": 1747,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "WAL Records": 0,
+          "WAL FPI": 0,
+          "WAL Bytes": 0
+        }
+      ]
+    },
+    "Settings": {
+      "plan_cache_mode": "force_custom_plan"
+    },
+    "Query Identifier": 3341799929233999041,
+    "Planning": {
+      "Shared Hit Blocks": 36,
+      "Shared Read Blocks": 0,
+      "Shared Dirtied Blocks": 0,
+      "Shared Written Blocks": 0,
+      "Local Hit Blocks": 0,
+      "Local Read Blocks": 0,
+      "Local Dirtied Blocks": 0,
+      "Local Written Blocks": 0,
+      "Temp Read Blocks": 0,
+      "Temp Written Blocks": 0
+    },
+    "Planning Time": 0.236,
+    "Triggers": [],
+    "Execution Time": 421.002
+  }
+]

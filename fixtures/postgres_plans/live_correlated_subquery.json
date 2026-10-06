@@ -1,0 +1,156 @@
+[
+  {
+    "Plan": {
+      "Node Type": "Index Scan",
+      "Parallel Aware": false,
+      "Async Capable": false,
+      "Scan Direction": "Forward",
+      "Index Name": "customers_pkey",
+      "Relation Name": "customers",
+      "Schema": "public",
+      "Alias": "c",
+      "Startup Cost": 0.29,
+      "Total Cost": 259457.39,
+      "Plan Rows": 120,
+      "Plan Width": 12,
+      "Actual Startup Time": 8.553,
+      "Actual Total Time": 427.574,
+      "Actual Rows": 116,
+      "Actual Loops": 1,
+      "Output": [
+        "c.id",
+        "(SubPlan 1)"
+      ],
+      "Index Cond": "(c.id <= 150)",
+      "Rows Removed by Index Recheck": 0,
+      "Filter": "(c.segment = 'regular'::text)",
+      "Rows Removed by Filter": 34,
+      "Shared Hit Blocks": 105796,
+      "Shared Read Blocks": 0,
+      "Shared Dirtied Blocks": 0,
+      "Shared Written Blocks": 0,
+      "Local Hit Blocks": 0,
+      "Local Read Blocks": 0,
+      "Local Dirtied Blocks": 0,
+      "Local Written Blocks": 0,
+      "Temp Read Blocks": 0,
+      "Temp Written Blocks": 0,
+      "WAL Records": 0,
+      "WAL FPI": 0,
+      "WAL Bytes": 0,
+      "Plans": [
+        {
+          "Node Type": "Aggregate",
+          "Strategy": "Plain",
+          "Partial Mode": "Simple",
+          "Parent Relationship": "SubPlan",
+          "Subplan Name": "SubPlan 1",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 2162.03,
+          "Total Cost": 2162.04,
+          "Plan Rows": 1,
+          "Plan Width": 8,
+          "Actual Startup Time": 3.633,
+          "Actual Total Time": 3.633,
+          "Actual Rows": 1,
+          "Actual Loops": 116,
+          "Output": [
+            "max(o.created_at)"
+          ],
+          "Shared Hit Blocks": 105792,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "WAL Records": 0,
+          "WAL FPI": 0,
+          "WAL Bytes": 0,
+          "Plans": [
+            {
+              "Node Type": "Seq Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Relation Name": "orders",
+              "Schema": "public",
+              "Alias": "o",
+              "Startup Cost": 0.0,
+              "Total Cost": 2162.0,
+              "Plan Rows": 13,
+              "Plan Width": 8,
+              "Actual Startup Time": 0.838,
+              "Actual Total Time": 3.619,
+              "Actual Rows": 7,
+              "Actual Loops": 116,
+              "Output": [
+                "o.id",
+                "o.customer_id",
+                "o.status",
+                "o.total_amount",
+                "o.currency",
+                "o.created_at",
+                "o.shipped_at"
+              ],
+              "Filter": "(o.customer_id = c.id)",
+              "Rows Removed by Filter": 99993,
+              "Shared Hit Blocks": 105792,
+              "Shared Read Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0,
+              "Local Hit Blocks": 0,
+              "Local Read Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Temp Written Blocks": 0,
+              "WAL Records": 0,
+              "WAL FPI": 0,
+              "WAL Bytes": 0
+            }
+          ]
+        }
+      ]
+    },
+    "Settings": {
+      "plan_cache_mode": "force_custom_plan"
+    },
+    "Query Identifier": -3684315076209772838,
+    "Planning": {
+      "Shared Hit Blocks": 3,
+      "Shared Read Blocks": 0,
+      "Shared Dirtied Blocks": 0,
+      "Shared Written Blocks": 0,
+      "Local Hit Blocks": 0,
+      "Local Read Blocks": 0,
+      "Local Dirtied Blocks": 0,
+      "Local Written Blocks": 0,
+      "Temp Read Blocks": 0,
+      "Temp Written Blocks": 0
+    },
+    "Planning Time": 0.121,
+    "Triggers": [],
+    "JIT": {
+      "Functions": 13,
+      "Options": {
+        "Inlining": false,
+        "Optimization": false,
+        "Expressions": true,
+        "Deforming": true
+      },
+      "Timing": {
+        "Generation": 0.245,
+        "Inlining": 0.0,
+        "Optimization": 0.349,
+        "Emission": 4.365,
+        "Total": 4.958
+      }
+    },
+    "Execution Time": 444.293
+  }
+]
