@@ -84,7 +84,7 @@ E-commerce schema: `customers, products, orders, order_items, payments, events`.
 | `small` (default for tests/CI) | 10k | 100k | 300k | 500k | automated tests |
 | `full` | 100k | 1M | 3M | 5M | demo |
 
-Deliberately only primary keys exist (plus those FKs' implicit lack of indexes) so the slow-query patterns are real.
+Only primary-key indexes exist. Foreign-key columns (`orders.customer_id`, `payments.order_id`, ...) are deliberately left unindexed so the slow-query patterns are real.
 
 ### Slow-query catalog (8 queries, each with parameters, description, expected finding, expected candidate)
 
@@ -106,7 +106,7 @@ Exit criterion: at least five show distinct slow-plan patterns on the `full` and
 - **Validator** (SQLGlot, dialect postgres): exactly one statement; root must be `SELECT` (or `WITH ... SELECT`, no data-modifying CTEs); rejects DDL/DML, `SELECT ... INTO`, `FOR UPDATE/SHARE`, `COPY`, `SET`, and calls to a denylist of functions (`pg_sleep`, `pg_read_file`, `pg_ls_dir`, `lo_*`, `dblink*`, `pg_terminate_backend`, `set_config`, advisory locks, ...). Comments are stripped before parsing so comment-smuggled statements are rejected; size limit on query text. Returns a normalized query, fingerprint, and referenced tables.
 - **Session guard**: every target connection runs `statement_timeout=10s`, `lock_timeout=1s`, `idle_in_transaction_session_timeout=15s`, `default_transaction_read_only=on`, inside an explicit transaction that is always rolled back; connection role is non-superuser. Row cap enforced by never returning business rows (only plans and checksums).
 - **EXPLAIN ANALYZE gate**: only runs when the request has `execute=true`; an `audit_events` row records the approval. Plain `EXPLAIN` otherwise.
-- **Parameters**: `$n` placeholders bound as typed values. Planner-only `EXPLAIN` uses `PLAN_CACHE_MODE`-forced generic/custom plan handling via literal inlining through the driver's server-side binding (`PREPARE` + `EXPLAIN EXECUTE`), so parameters are never string-concatenated.
+- **Parameters**: queries use `$n` placeholders. Values are bound server-side through the driver (psycopg 3), never string-concatenated. For planner-only `EXPLAIN` the session sets `plan_cache_mode = force_custom_plan` and runs `PREPARE` + `EXPLAIN EXECUTE`, so the plan reflects the actual parameter values (needed for realistic selectivity estimates and HypoPG comparisons). Benchmarks bind the same values, so original and candidate runs are comparable.
 - **Credentials**: Fernet-encrypted at rest with an app key from env; deletion endpoint. `/connections/test` only succeeds for allowlisted sample hosts in this release.
 - **Audit events**: analysis started, execute-explain requested, benchmark approved, sandbox index created, job cancelled, report exported.
 - Redaction: literals are stripped from log lines; stored query and plan size limits.
