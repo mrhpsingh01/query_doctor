@@ -15,6 +15,16 @@ from querydoctor.lab.generator import generate
 from querydoctor.lab.schema_sql import COLUMNS, DROP_ALL, POST_LOAD_DDL, TABLE_DDL
 
 
+def _grant_stats_visibility(conn: psycopg.Connection, log) -> None:
+    """Let the read-only analysis role read pg_stat_statements for every role (the workload importer needs it).
+    Only a superuser can grant; on the bench instance (no such role) or without the privilege this is skipped."""
+    try:
+        if conn.execute("SELECT 1 FROM pg_roles WHERE rolname = 'qd_readonly'").fetchone():
+            conn.execute("GRANT pg_read_all_stats TO qd_readonly")
+    except psycopg.Error as exc:
+        log(f"  could not grant pg_read_all_stats ({exc.diag.message_primary}); workload import will be limited")
+
+
 def _already_seeded(conn: psycopg.Connection) -> bool:
     for table in TABLE_DDL:
         exists = conn.execute("SELECT to_regclass(%s)", (f"public.{table}",)).fetchone()[0]
@@ -50,6 +60,7 @@ def seed(
             log(f"  {table}: {loaded:,} rows in {time.perf_counter() - started:.1f}s")
         for ddl in POST_LOAD_DDL:
             conn.execute(ddl)
+        _grant_stats_visibility(conn, log)
         conn.execute("ANALYZE")
     return counts
 

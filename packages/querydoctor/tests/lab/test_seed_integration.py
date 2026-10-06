@@ -28,3 +28,15 @@ def test_if_empty_skips_an_already_seeded_database_but_seeds_a_missing_one():
         assert conn.execute("SELECT count(*) FROM payments WHERE id = 1").fetchone()[0] == 0
         conn.execute("DROP TABLE orders CASCADE")
     assert seed(TARGET_ADMIN_DSN, "small", if_empty=True)["orders"] == 100_000  # missing table => reseed
+
+
+def test_readonly_role_can_read_pg_stat_statements_for_all_roles():
+    """The workload importer reads other roles' statements through the read-only role, which needs pg_read_all_stats."""
+    from labdsn import TARGET_RO_DSN
+
+    seed(TARGET_ADMIN_DSN, "small")
+    with psycopg.connect(TARGET_RO_DSN) as conn:
+        assert conn.execute("SELECT pg_has_role('qd_readonly', 'pg_read_all_stats', 'member')").fetchone()[0] is True
+        # with the privilege the query text of every role is visible (without it, other roles' text is <insufficient privilege>)
+        texts = [r[0] for r in conn.execute("SELECT query FROM pg_stat_statements WHERE query LIKE 'COPY%' LIMIT 5")]
+        assert texts and all("insufficient privilege" not in t for t in texts)
