@@ -23,6 +23,8 @@ x-api-env: &api-env
   QD_SECRET_KEY: ${QD_SECRET_KEY:-}
   QD_SCALE: ${QD_SCALE:-small}
   QD_MODEL_DIR: /models
+  QD_MONGO_TARGET_URI: mongodb://qd_readonly:qd_readonly@mongo:27017/qd_sample?authSource=admin
+  QD_MONGO_BENCH_URI: mongodb://qd_bench:qd_bench@mongo:27017/?authSource=admin
   QD_OLLAMA_URL: ${QD_OLLAMA_URL:-http://host.docker.internal:11434}
   QD_OLLAMA_MODEL: ${QD_OLLAMA_MODEL:-}  # empty: explanations use the deterministic template only
 
@@ -57,6 +59,21 @@ services:
       test: ["CMD-SHELL", "pg_isready -U querydoctor -d postgres"]
       interval: 3s
       timeout: 3s
+      retries: 30
+
+  mongo:
+    image: mongo:7
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: querydoctor
+      MONGO_INITDB_ROOT_PASSWORD: querydoctor
+    ports: ["127.0.0.1:${QD_MONGO_PORT:-27018}:27017"]  # 27017 is often taken by a local MongoDB
+    volumes:
+      - mongo-data:/data/db
+      - ./docker/initdb/mongo:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "-u", "querydoctor", "-p", "querydoctor", "--authenticationDatabase", "admin", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
       retries: 30
 
   querydoctor-db:
@@ -139,6 +156,7 @@ services:
       redis: {condition: service_healthy}
 
 volumes:
+  mongo-data:
   target-data:
   bench-data:
   meta-data:

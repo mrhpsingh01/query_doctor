@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     ollama_url: str = "http://127.0.0.1:11434"  # a local Ollama server; the model name below enables it
     ollama_model: str = ""  # empty: explanations use the deterministic template only
     ollama_timeout_s: float = 60
+    mongo_target_uri: str = "mongodb://qd_readonly:qd_readonly@127.0.0.1:27018/qd_sample?authSource=admin"
+    mongo_bench_uri: str = "mongodb://qd_bench:qd_bench@127.0.0.1:27018/?authSource=admin"
     model_dir: str = "models"  # where ranker.joblib and ranker.meta.json live; a missing model just means heuristic ordering
     seq_scan_min_rows: int | None = None  # overrides the scale-aware default below
 
