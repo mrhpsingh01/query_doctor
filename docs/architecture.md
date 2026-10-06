@@ -28,6 +28,22 @@ Pure modules are tested with committed plan fixtures, so most of the logic needs
 * **Target databases** are what is being investigated. `target-postgres` serves planner-only work (EXPLAIN and
   HypoPG) through a read-only role. `bench-postgres` hosts the throwaway clones used for benchmarks.
 
+## Workload intelligence
+
+`querydoctor.workload` is pure apart from one reader. `read_statements` selects the heaviest rows of
+`pg_stat_statements` for the current database (the read-only role holds `pg_read_all_stats` so every role's text is
+visible). `merge_statements` runs each text through the safety validator, keeps single table-reading `SELECT`s that are
+not system-catalog plumbing, and groups them by the validator's **fingerprint**. pg_stat_statements' `$n` text
+and a QueryDoctor analysis of the same query with literals share a fingerprint, which is what links the two worlds.
+Counters add; the standard deviation is pooled (`sqrt(Σ n(σ² + μ²)/N − mean²)`); `p95_est_ms = mean + 1.645σ` is an
+estimate and labelled so everywhere.
+
+`analysis.py` holds the decisions: rank by total time, the seven panels, interval-based regression detection
+(`recent mean = Δtotal / Δcalls` against the earlier cumulative mean; ignores resets and queries with fewer than 20 new
+calls) and plan-change detection across analyses of one fingerprint. `app/services/workload.py` persists snapshots
+(`workload_snapshots`, `workload_queries`; migration 0004) and builds the dashboard, per-query detail and per-fingerprint
+history. The seed job resets statistics and runs `lab.workload`'s deterministic baseline traffic once.
+
 ## The analysis pipeline
 
 | Stage | What happens | Event |
@@ -87,6 +103,7 @@ documented as evidence, not proof.
 
 ## Data model
 
+`workload_snapshots` and `workload_queries` (imported statistics, one row per fingerprint per snapshot),
 `projects`, `connections` (passwords stored encrypted), `query_snapshots` (the canonical SQL and its parameters),
 `analyses` (raw plan JSON, schema snapshot, status), `findings`, `recommendation_candidates` (including ruled-out ones
 with their reason), `benchmark_runs` (config, result, status) and `audit_events`. Migrations live in

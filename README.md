@@ -53,6 +53,25 @@ Use the larger demo dataset (1M orders, 3M order items, 5M events) with `QD_SCAL
 
 ![An index idea with its evidence level, then the measured comparison](docs/screenshots/05-benchmark.png)
 
+## Which query should I fix first? (Workload)
+
+A single slow query is only half the question. The **Workload** page imports the database's own statistics
+(`pg_stat_statements`), merges statements that are the same query shape, and ranks them by **total time**
+(mean × calls), because a 6 ms query called 1,500 times costs more than a 600 ms query called once.
+
+* Seven panels: highest total time, slowest (estimated) p95, most frequent, highest I/O, most unstable, largest
+  regression, and queries with no benchmark evidence yet.
+* `pg_stat_statements` keeps no percentiles, so the p95 shown is **estimated** (mean + 1.645 standard deviations) and
+  labelled that way. A measured p95 appears only for queries you benchmark.
+* Import twice and the page compares the snapshots: counters are cumulative, so it works out the mean over the calls
+  made *between* them and flags queries that got 1.5× slower or more.
+* **History** groups every analysis by query shape: how often it was analysed, measured latency, plan changes, and the
+  best evidence level reached.
+* The sample database comes with demo traffic (a baseline run at first start; **Generate demo traffic** and
+  **Simulate a regression** on the page).
+
+![The workload ranking and panels](docs/screenshots/06-workload.png)
+
 ## How it works
 
 ```mermaid
@@ -130,13 +149,14 @@ Integration tests skip themselves with a clear message when the Docker lab is no
 | SQL safety, guarded sessions, HypoPG, sandbox, benchmark runner | pytest against the live lab |
 | API: pipeline, SSE, benchmarks, adversarial input | pytest (in-process) and against the running stack |
 | Golden tests | every catalog query diagnosed and its index validated on real PostgreSQL |
+| Workload | statement merging, ranking, regression and plan-change detection (pure); import and ranking against the live lab |
 | UI components and logic | Vitest + Testing Library |
 | The user journey | Playwright |
 
 ## Layout
 
 ```
-packages/querydoctor/   the engine: safety, plan_parser, diagnosis, candidates, benchmark, db, lab
+packages/querydoctor/   the engine: safety, plan_parser, diagnosis, candidates, benchmark, workload, db, lab
 apps/api/               FastAPI control plane + Celery worker + Alembic migrations
 apps/web/               Next.js UI (Monaco, React Flow, Recharts)
 infrastructure/         Docker images and compose.yaml
@@ -147,7 +167,7 @@ docs/                   architecture, security, rule catalog, design spec and im
 ## Scope of this release
 
 PostgreSQL 16, `SELECT` queries, one at a time, against the sample database. Not included yet: your own database
-connections, authentication, workload import from `pg_stat_statements`, an ML ranker for recommendations, grounded
+connections, authentication, an ML ranker for recommendations, grounded
 LLM explanations, and MongoDB support. The design for the first release is in
 [docs/superpowers/specs](docs/superpowers/specs) and the build plan in [docs/superpowers/plans](docs/superpowers/plans).
 
