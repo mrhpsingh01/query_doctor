@@ -64,3 +64,39 @@ def test_nothing_is_ever_created_by_analysis(http, results):
     with psycopg.connect("postgresql://querydoctor:querydoctor@localhost:5433/querydoctor_sample") as conn:
         names = sorted(r[0] for r in conn.execute("SELECT indexname FROM pg_indexes WHERE schemaname = 'public'"))
     assert all(n.endswith("_pkey") or n == "idx_customers_email" for n in names), names
+
+
+def test_an_approved_benchmark_runs_in_the_real_sandbox_and_validates_the_index(http, results):
+    """The full promise end to end: approve the top index idea, the worker benchmarks it in an isolated clone, and the
+    measured speed-up (not a guess) earns the 'benchmark-validated' label."""
+    import time
+
+    q = next(q for q in CATALOG if q.id == "recent_orders_by_customer")
+    analysis = results[q.id]
+    top = min((c for c in analysis["candidates"] if not c["dropped"]), key=lambda c: c["rank"])
+    response = http.post(f"/api/analyses/{analysis['id']}/candidates/{top['id']}/benchmark", json={"runs": 5})
+    assert response.status_code in (200, 202), response.text
+    run_id = response.json()["id"]
+
+    deadline = time.monotonic() + 120
+    run = {}
+    while time.monotonic() < deadline:
+        run = http.get(f"/api/benchmarks/{run_id}").json()
+        if run["status"] in ("completed", "failed", "cancelled"):
+            break
+        time.sleep(1)
+    assert run["status"] == "completed", run
+    result = run["result"]
+    assert result["before"]["n"] == 5 and result["after"]["n"] == 5
+    assert result["after"]["median_ms"] < result["before"]["median_ms"] and result["improvement_pct"] > 20
+    assert result["checksum_match"] is True and result["index_size_bytes"] > 0
+
+    refreshed = http.get(f"/api/analyses/{analysis['id']}").json()
+    assert next(c for c in refreshed["candidates"] if c["id"] == top["id"])["validation"] == "benchmark_validated"
+    report = http.get(f"/api/analyses/{analysis['id']}/report?format=md")
+    assert report.status_code == 200 and "Benchmark-validated" in report.text and "faster" in report.text
+
+    import psycopg
+
+    with psycopg.connect("postgresql://qd_bench:qd_bench@localhost:5434/postgres") as conn:
+        assert conn.execute("SELECT count(*) FROM pg_database WHERE datname LIKE 'bench\_%'").fetchone()[0] == 0
