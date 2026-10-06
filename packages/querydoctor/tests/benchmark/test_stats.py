@@ -81,3 +81,62 @@ def test_cache_warming_is_flagged_when_the_first_run_dominates():
     ok = stats([10] * 7)
     warnings = reliability_warnings(ok, ok, config=BenchmarkConfig(), checksum_match=True, first_run_ratio=5.0)
     assert any("cache warming" in w.lower() for w in warnings)
+
+
+# ---- comparing outputs (review finding I1) ------------------------------------------------------------------------
+
+from querydoctor.benchmark import compare_outputs  # noqa: E402
+
+
+def test_identical_outputs_match_without_warnings():
+    assert compare_outputs("u1", "u1", "o1", "o1") == (True, [])
+    assert compare_outputs("u1", "u1", None, None) == (True, [])  # a query without ORDER BY has no ordered checksum
+
+
+def test_different_rows_are_a_mismatch():
+    match, warnings = compare_outputs("u1", "u2", "o1", "o2")
+    assert match is False and warnings == []  # the blocking warning comes from reliability_warnings
+
+
+def test_rows_that_tie_on_the_sort_key_may_legitimately_come_back_in_another_order():
+    """ORDER BY on a non-unique key leaves ties in unspecified order: same rows, different order is NOT 'output differs'."""
+    match, warnings = compare_outputs("u1", "u1", "o1", "o2")
+    assert match is True
+    assert len(warnings) == 1 and "order" in warnings[0].lower() and not is_blocking(warnings[0])
+
+
+# ---- when a benchmark may award validation (review finding I2) -----------------------------------------------------
+
+from querydoctor.benchmark import awards_validation  # noqa: E402
+from querydoctor.benchmark.models import BenchmarkResult  # noqa: E402
+
+
+def result(**over):
+    base = dict(
+        before=summarize([10.0] * 7), after=summarize([2.0] * 7), before_samples=[], after_samples=[],
+        improvement_pct=80.0, index_size_bytes=1, index_build_ms=1.0, plan_fingerprint_before="a", plan_fingerprint_after="b",
+        checksum_match=True, warnings=[], pg_version="PostgreSQL 16", settings={}, dataset_snapshot="s", ddl="CREATE INDEX ON t (a)",
+        index_used=True,
+    )
+    return BenchmarkResult(**{**base, **over})
+
+
+def test_a_clear_comparable_improvement_that_uses_the_index_is_validated():
+    assert awards_validation(result()) is True
+    assert awards_validation(result(warnings=["Cache warming dominates: the first run was 3.4x the median."])) is True
+
+
+@pytest.mark.parametrize(
+    "over",
+    [
+        dict(improvement_pct=1.2),  # inside the noise
+        dict(improvement_pct=9.9),  # just under the floor
+        dict(improvement_pct=-30.0),  # a regression
+        dict(index_used=False),  # faster only by chance: the plan never used the index
+        dict(checksum_match=False),
+        dict(warnings=["Output differs: the query returned different results"]),
+        dict(warnings=["High variance in the before timings (CV 40%)"]),
+    ],
+)
+def test_noise_regressions_unused_indexes_and_incomparable_results_are_not_validated(over):
+    assert awards_validation(result(**over)) is False

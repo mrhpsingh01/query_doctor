@@ -45,6 +45,7 @@ class BenchmarkResult(BaseModel):
     plan_fingerprint_before: str
     plan_fingerprint_after: str
     checksum_match: bool
+    index_used: bool  # the index that was created appears in the final (indexed) plan
     warnings: list[str]
     pg_version: str
     settings: dict[str, Any]

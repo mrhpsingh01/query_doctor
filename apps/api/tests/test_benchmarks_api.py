@@ -13,7 +13,7 @@ from app.models import AuditEvent, BenchmarkRun
 from app.services.benchmarks import BenchmarkDeps
 
 
-def make_result(improvement=94.5, warnings=(), checksum_match=True) -> BenchmarkResult:
+def make_result(improvement=94.5, warnings=(), checksum_match=True, index_used=True) -> BenchmarkResult:
     before = [700.0, 742.0, 750.0, 735.0, 760.0, 740.0, 745.0]
     factor = 1 - improvement / 100
     after = [x * factor for x in before]
@@ -22,7 +22,7 @@ def make_result(improvement=94.5, warnings=(), checksum_match=True) -> Benchmark
         before_samples=[RunSample(execution_ms=x, rows=10) for x in before],
         after_samples=[RunSample(execution_ms=x, rows=10) for x in after],
         improvement_pct=improvement, index_size_bytes=5_000_000, index_build_ms=68.0,
-        plan_fingerprint_before="aaa", plan_fingerprint_after="bbb", checksum_match=checksum_match,
+        plan_fingerprint_before="aaa", plan_fingerprint_after="bbb", checksum_match=checksum_match, index_used=index_used,
         warnings=list(warnings), pg_version="PostgreSQL 16", settings={"work_mem": "4096"},
         dataset_snapshot="snap", ddl="CREATE INDEX ON orders (customer_id)",
     )
@@ -165,11 +165,28 @@ def test_different_output_blocks_validation(client, runner):
     assert best_candidate(client.get(f"/api/analyses/{analysis['id']}").json())["validation"] == "planner_validated"
 
 
-def test_non_blocking_warnings_do_not_stop_validation(client, runner):
-    runner.result = make_result(warnings=["High variance in the before timings (CV 30%)"])
+def test_a_non_blocking_warning_such_as_cache_warming_does_not_stop_validation(client, runner):
+    runner.result = make_result(warnings=["Cache warming dominates: the first measured run was 3.4x the median."])
     analysis = analyse(client)
     approve(client, analysis)
     assert best_candidate(client.get(f"/api/analyses/{analysis['id']}").json())["validation"] == "benchmark_validated"
+
+
+@pytest.mark.parametrize(
+    "result",
+    [
+        make_result(improvement=2.0),  # inside the noise
+        make_result(index_used=False, warnings=["The new index was not used by the query's final plan"]),
+        make_result(warnings=["High variance in the before timings (CV 40%)"]),
+    ],
+    ids=["noise", "index-unused", "high-variance"],
+)
+def test_results_that_do_not_clearly_show_the_index_helping_never_validate_it(client, runner, result):
+    runner.result = result
+    analysis = analyse(client)
+    run = client.get(f"/api/benchmarks/{approve(client, analysis).json()['id']}").json()
+    assert run["status"] == "completed" and run["result"] is not None  # still recorded and shown
+    assert best_candidate(client.get(f"/api/analyses/{analysis['id']}").json())["validation"] == "planner_validated"
 
 
 def test_progress_events_are_streamed_and_replayed(client):

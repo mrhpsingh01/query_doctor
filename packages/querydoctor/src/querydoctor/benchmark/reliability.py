@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from querydoctor.benchmark.models import BenchmarkConfig, RunStats
+from querydoctor.benchmark.models import BenchmarkConfig, BenchmarkResult, RunStats
 
 MIN_RUNS = 5
 CACHE_WARMING_RATIO = 3.0
@@ -12,6 +12,37 @@ _BLOCKING_PREFIXES = ("Output differs",)
 def is_blocking(warning: str) -> bool:
     """A blocking warning means the comparison must not award benchmark validation (the results are not comparable)."""
     return warning.startswith(_BLOCKING_PREFIXES)
+
+
+MIN_IMPROVEMENT_PCT = 10.0  # below this, a difference is indistinguishable from run-to-run noise on a shared machine
+
+
+def compare_outputs(
+    before_unordered: str, after_unordered: str, before_ordered: str | None, after_ordered: str | None
+) -> tuple[bool, list[str]]:
+    """Decide whether two runs returned the same output.
+
+    The unordered (set) checksum decides. Rows that tie on an ORDER BY key may legitimately come back in another order, so a
+    difference in ordered checksums alone is only a note, never a mismatch.
+    """
+    if before_unordered != after_unordered:
+        return False, []
+    if before_ordered is not None and before_ordered != after_ordered:
+        return True, [
+            "Row order among rows with equal sort keys differs between the runs; the rows themselves are identical."
+        ]
+    return True, []
+
+
+def awards_validation(result: BenchmarkResult) -> bool:
+    """May this result upgrade a candidate to 'benchmark-validated'? Only a clear, comparable, attributable speed-up."""
+    return (
+        result.improvement_pct >= MIN_IMPROVEMENT_PCT
+        and result.checksum_match
+        and result.index_used
+        and not any(is_blocking(w) for w in result.warnings)
+        and not any(w.startswith("High variance") for w in result.warnings)
+    )
 
 
 def reliability_warnings(

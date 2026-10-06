@@ -22,11 +22,11 @@ from psycopg import sql as psql
 
 from querydoctor.benchmark.checksum import has_order_by, result_checksum
 from querydoctor.benchmark.models import BenchmarkConfig, BenchmarkResult, RunSample
-from querydoctor.benchmark.reliability import reliability_warnings
+from querydoctor.benchmark.reliability import compare_outputs, reliability_warnings
 from querydoctor.benchmark.sandbox import Sandbox
 from querydoctor.benchmark.stats import improvement_pct, summarize
 from querydoctor.db import DbError, explain, guarded_connection
-from querydoctor.plan_parser import parse_explain
+from querydoctor.plan_parser import iter_nodes, parse_explain
 
 log = logging.getLogger(__name__)
 
@@ -135,6 +135,14 @@ def _runs(conn, sql, params, n, warmups, check, on_progress, warm_stage, measure
     return samples, raw
 
 
+def _checksums(conn, sql, params, ordered: bool) -> tuple[str, str | None]:
+    """(set checksum, row-order checksum or None when the query has no ORDER BY)."""
+    return (
+        result_checksum(conn, sql, params, ordered=False),
+        result_checksum(conn, sql, params, ordered=True) if ordered else None,
+    )
+
+
 def _measure_both(conn, sql, params, ddl, table, config, on_progress, check, template) -> BenchmarkResult:
     version = conn.execute("SELECT version()").fetchone()[0].split(" on ")[0]
     settings = dict(conn.execute("SELECT name, setting FROM pg_settings WHERE name = ANY(%s)", (list(_SETTINGS),)).fetchall())
@@ -148,7 +156,7 @@ def _measure_both(conn, sql, params, ddl, table, config, on_progress, check, tem
     conn.read_only = True  # the measured query can never write; only the DDL step below switches this off
 
     before_samples, before_raw = _runs(conn, sql, params, config.runs, config.warmups, check, on_progress, "warmup_before", "measuring_before")
-    check_before = result_checksum(conn, sql, params, ordered=ordered)
+    checks_before = _checksums(conn, sql, params, ordered)
 
     check()
     on_progress("creating_index")
@@ -172,7 +180,7 @@ def _measure_both(conn, sql, params, ddl, table, config, on_progress, check, tem
     conn.read_only = True
 
     after_samples, after_raw = _runs(conn, sql, params, config.runs, config.warmups, check, on_progress, "warmup_after", "measuring_after")
-    check_after = result_checksum(conn, sql, params, ordered=ordered)
+    checks_after = _checksums(conn, sql, params, ordered)
 
     on_progress("comparing")
     before = summarize([s.execution_ms for s in before_samples])
@@ -181,12 +189,17 @@ def _measure_both(conn, sql, params, ddl, table, config, on_progress, check, tem
         before_samples[0].execution_ms / before.median_ms if before.median_ms else 1.0,
         after_samples[0].execution_ms / after.median_ms if after.median_ms else 1.0,
     )
-    match = check_before == check_after
+    match, output_notes = compare_outputs(checks_before[0], checks_after[0], checks_before[1], checks_after[1])
+    after_plan = parse_explain(after_raw)
+    index_used = bool(created) and any(n.index_name == created[0] for n in iter_nodes(after_plan.root))
+    warnings = reliability_warnings(before, after, config=config, checksum_match=match, first_run_ratio=first_ratio)
+    warnings += output_notes
+    if not index_used:
+        warnings.append("The new index was not used by the query's final plan, so any speed difference is not attributable to it.")
     return BenchmarkResult(
         before=before, after=after, before_samples=before_samples, after_samples=after_samples,
         improvement_pct=improvement_pct(before.median_ms, after.median_ms), index_size_bytes=int(size),
         index_build_ms=build_ms, plan_fingerprint_before=parse_explain(before_raw).fingerprint,
-        plan_fingerprint_after=parse_explain(after_raw).fingerprint, checksum_match=match,
-        warnings=reliability_warnings(before, after, config=config, checksum_match=match, first_run_ratio=first_ratio),
+        plan_fingerprint_after=after_plan.fingerprint, checksum_match=match, index_used=index_used, warnings=warnings,
         pg_version=version, settings=settings, dataset_snapshot=snapshot, ddl=ddl,
     )

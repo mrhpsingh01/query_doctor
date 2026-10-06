@@ -11,7 +11,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from querydoctor.benchmark import BenchmarkConfig, is_blocking
+from querydoctor.benchmark import BenchmarkConfig, awards_validation
 from querydoctor.benchmark.runner import BenchmarkCancelled, BenchmarkFailed, run_benchmark
 from sqlalchemy.orm import Session
 
@@ -89,7 +89,6 @@ def run_benchmark_job(session: Session, run_id: int, deps: BenchmarkDeps) -> Non
         _finish(session, deps, run, "cancelled", "cancelled")
         return
     run.result = result.model_dump()
-    blocked = any(is_blocking(w) for w in result.warnings)
-    if result.improvement_pct > 0 and result.checksum_match and not blocked:
+    if awards_validation(result):  # clear, comparable, attributable to the index (see querydoctor.benchmark.reliability)
         candidate.validation = "benchmark_validated"
     _finish(session, deps, run, "completed", "benchmark_completed")

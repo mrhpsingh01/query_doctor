@@ -81,7 +81,7 @@ def test_a_covering_index_makes_the_headline_query_measurably_faster_and_leaves_
     assert result.after.median_ms < result.before.median_ms
     assert result.improvement_pct > 20
     assert result.index_size_bytes > 0 and result.index_build_ms > 0
-    assert result.checksum_match is True
+    assert result.checksum_match is True and result.index_used is True
     assert result.plan_fingerprint_before != result.plan_fingerprint_after
     assert result.pg_version.startswith("PostgreSQL 16") and "work_mem" in result.settings
     assert result.dataset_snapshot and result.ddl == COVERING
@@ -109,6 +109,24 @@ def test_the_measured_queries_run_in_read_only_transactions_but_the_index_build_
     result = run_benchmark(BENCH_ADMIN_DSN, Q1.sql, Q1.params, COVERING, FAST)
     assert result.index_size_bytes > 0  # the CREATE INDEX itself was allowed to write
     assert len(seen) >= 2 * (FAST.runs + FAST.warmups) and set(seen) == {"on"}
+
+
+def test_an_index_the_final_plan_never_uses_is_reported_as_unused_and_cannot_validate():
+    from querydoctor.benchmark import awards_validation
+
+    result = run_benchmark(BENCH_ADMIN_DSN, Q1.sql, Q1.params, "CREATE INDEX ON payments (method)", FAST)
+    assert result.index_used is False
+    assert any("not used" in w.lower() for w in result.warnings)
+    assert awards_validation(result) is False
+
+
+def test_rows_tying_on_the_sort_key_never_produce_a_false_output_differs_verdict():
+    """Review finding I1: the headline 'large sort' query orders by a ~1000-value column, so rows tie. An index that
+    changes the plan (and the tie order) must still be judged on the rows, not on tie order."""
+    q = next(q for q in build_catalog("small") if q.id == "unnecessary_large_sort")
+    result = run_benchmark(BENCH_ADMIN_DSN, q.sql, q.params, "CREATE INDEX ON events (event_type, payload)", FAST)
+    assert result.checksum_match is True
+    assert not any(w.startswith("Output differs") for w in result.warnings)
 
 
 def test_benchmarks_of_the_same_candidate_share_a_dataset_snapshot_id():
