@@ -30,6 +30,7 @@ class Analysis(CreatedMixin, Base):
     stage: Mapped[str | None] = mapped_column(String(40), default=None)
     execute: Mapped[bool] = mapped_column(Boolean, default=False)
     cancel_requested: Mapped[bool] = mapped_column(Boolean, default=False)
+    backend_pid: Mapped[int | None] = mapped_column(Integer, default=None)  # target-DB backend of the running statement
     error: Mapped[str | None] = mapped_column(Text, default=None)
     plan_json: Mapped[Any | None] = mapped_column(JSON, default=None)  # raw EXPLAIN JSON; normalized on read
     schema_json: Mapped[dict | None] = mapped_column(JSON, default=None)  # SchemaSnapshot at analysis time

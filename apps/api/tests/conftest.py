@@ -4,10 +4,12 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
+from stubs import StubTarget
 
 from app.config import Settings
 from app.main import create_app
 from app.models import Base
+from app.services.events import InMemoryEventBus
 
 TEST_KEY = Fernet.generate_key().decode()
 
@@ -26,6 +28,18 @@ def db_session() -> Session:
 
 
 @pytest.fixture
-def client(settings: Settings) -> TestClient:
-    with TestClient(create_app(settings)) as c:
+def bus() -> InMemoryEventBus:
+    return InMemoryEventBus()
+
+
+@pytest.fixture
+def stub() -> StubTarget:
+    return StubTarget()
+
+
+@pytest.fixture
+def client(settings: Settings, bus: InMemoryEventBus, stub: StubTarget) -> TestClient:
+    """API client wired to an in-memory bus and a stubbed target; background jobs run inline."""
+    app = create_app(settings, event_bus=bus, pipeline_deps=stub.deps(bus))
+    with TestClient(app) as c:
         yield c
