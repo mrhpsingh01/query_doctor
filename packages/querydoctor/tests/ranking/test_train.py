@@ -116,3 +116,30 @@ def test_a_label_with_a_single_class_does_not_break_training():
     bundle = train_all(rows, seed=1)
     p = bundle.predict(rows_to_matrix(rows[:10]))["p_regression"]
     assert np.all(p == 0.0) or np.all(p < 0.05)
+
+
+def test_the_command_line_trains_from_a_jsonl_file_and_writes_the_bundle(tmp_path):
+    from querydoctor.ranking.dataset import write_rows
+    from querydoctor.ranking.train_cli import main
+
+    write_rows(tmp_path / "d.jsonl", synthetic_rows(1, signal=True, n_queries=100, n_groups=25))
+    assert main(["--data", str(tmp_path / "d.jsonl"), "--out", str(tmp_path / "m" / "ranker.joblib"), "--seed", "1"]) == 0
+    assert load_bundle(tmp_path / "m" / "ranker.joblib").meta["dataset"]["rows"] == 600
+
+
+def test_a_model_trained_by_the_command_line_loads_in_a_fresh_process(tmp_path):
+    """Regression: running the trainer as __main__ pickled the model's classes under '__main__' and no other process
+    (the API) could load it."""
+    import subprocess
+    import sys
+
+    from querydoctor.ranking.dataset import write_rows
+
+    write_rows(tmp_path / "d.jsonl", synthetic_rows(1, signal=True, n_queries=100, n_groups=25))
+    out = tmp_path / "m" / "ranker.joblib"
+    subprocess.run(
+        [sys.executable, "-m", "querydoctor.ranking.train_cli", "--data", str(tmp_path / "d.jsonl"), "--out", str(out)],
+        check=True, capture_output=True,
+    )
+    check = "from querydoctor.ranking.predictor import Predictor; import sys; sys.exit(0 if Predictor.load(sys.argv[1]) else 1)"
+    assert subprocess.run([sys.executable, "-c", check, str(out.parent)]).returncode == 0

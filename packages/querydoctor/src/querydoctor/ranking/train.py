@@ -367,3 +367,4 @@ def load_bundle(path: str | pathlib.Path) -> TrainedBundle:
     path = pathlib.Path(path)
     meta = json.loads(_meta_path(path).read_text(encoding="utf-8"))
     return TrainedBundle(models=joblib.load(path), meta=meta)
+

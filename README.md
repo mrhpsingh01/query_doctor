@@ -72,6 +72,15 @@ A single slow query is only half the question. The **Workload** page imports the
 
 ![The workload ranking and panels](docs/screenshots/06-workload.png)
 
+## Does a model help choose the index? (honest answer: not yet)
+
+Index ideas carry a separate **Prediction** block (expected speedup, probability of helping, index size, regression
+risk, and the top three reasons) from a LightGBM model trained on 3,670 measured candidates. It is advice, never
+evidence, and it does not change the evidence badge. On held-out query shapes the model did **not** order suggestions
+better than the planner score, so the planner score keeps ordering them; see [docs/ml-evaluation.md](docs/ml-evaluation.md)
+for the numbers and limits. The **Models** page shows the comparison, calibration and live monitoring. Rebuild the model
+with `python -m querydoctor.lab.dataset_gen` (measures candidates; resumable) and `python -m querydoctor.ranking.train_cli`.
+
 ## How it works
 
 ```mermaid
@@ -167,7 +176,7 @@ docs/                   architecture, security, rule catalog, design spec and im
 ## Scope of this release
 
 PostgreSQL 16, `SELECT` queries, one at a time, against the sample database. Not included yet: your own database
-connections, authentication, an ML ranker for recommendations, grounded
+connections, authentication, grounded
 LLM explanations, and MongoDB support. The design for the first release is in
 [docs/superpowers/specs](docs/superpowers/specs) and the build plan in [docs/superpowers/plans](docs/superpowers/plans).
 

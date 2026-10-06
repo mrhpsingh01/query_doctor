@@ -4,6 +4,9 @@ FROM python:3.12-slim
 ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
 WORKDIR /srv
 
+# LightGBM needs the OpenMP runtime
+RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 && rm -rf /var/lib/apt/lists/*
+
 COPY packages/querydoctor /srv/packages/querydoctor
 COPY apps/api /srv/apps/api
 RUN pip install /srv/packages/querydoctor /srv/apps/api
