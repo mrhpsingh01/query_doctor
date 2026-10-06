@@ -25,6 +25,13 @@ describe("PlanNodeBody", () => {
     expect(screen.getByRole("meter", { name: /share of query time/i })).toHaveAttribute("aria-valuenow", "99");
   });
 
+  it("shows elapsed time for parallel nodes, not summed worker time", () => {
+    const parallel = { ...scan(), actual_time_ms: 90, loops: 3, total_time_ms: 90 };
+    render(<PlanNodeBody node={parallel} data={{ severity: "green", share: 0.5, isSlowest: false, findingCount: 0 }} />);
+    expect(screen.getByText("90 ms")).toBeInTheDocument();
+    expect(screen.queryByText("270 ms")).not.toBeInTheDocument();
+  });
+
   it("omits actuals and the time bar for planner-only nodes", () => {
     const planned = { ...scan(), actual_rows: null, actual_time_ms: null, exclusive_time_ms: null, loops: null };
     render(<PlanNodeBody node={planned} data={{ severity: "green", share: null, isSlowest: false, findingCount: 0 }} />);

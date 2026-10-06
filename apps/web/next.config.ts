@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 // The browser only ever talks to this origin; /api/* is proxied to the FastAPI service.
-const API_URL = process.env.QD_API_URL ?? "http://localhost:8010";
+const API_URL = process.env.QD_API_URL ?? "http://127.0.0.1:8010";
 
 const nextConfig: NextConfig = {
   output: "standalone", // a self-contained server for the Docker image

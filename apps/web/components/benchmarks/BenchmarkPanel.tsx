@@ -75,23 +75,31 @@ export function BenchmarkPanel({ run, onCancel, onFinished }: Props) {
 
   const result = run.result;
   if (!result) return null;
+  // Never state a speed-up the evidence does not support: different output means the timings are not comparable, and a
+  // difference inside the noise is not a win.
+  const incomparable = !result.checksum_match;
+  const unchanged = !incomparable && Math.abs(result.improvement_pct) < 0.5;
   const faster = result.improvement_pct >= 0;
-  const blocking = result.warnings.some(isBlocking);
+  const outcome = incomparable ? "incomparable" : unchanged ? "same" : faster ? "faster" : "slower";
+  const headline = incomparable
+    ? "Results are not comparable"
+    : unchanged
+      ? "No measurable change"
+      : `${trimmed(Math.abs(result.improvement_pct))}% ${faster ? "faster" : "slower"}`;
+  const headlineColor = outcome === "faster" ? "text-heat-0" : outcome === "same" ? "text-ink-2" : "text-heat-3";
+  const blocking = incomparable || result.warnings.some(isBlocking);
 
   return (
     <div className="grid gap-4 rounded-md border border-line bg-surface p-4">
       <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-        <span
-          data-outcome={faster ? "faster" : "slower"}
-          className={`text-2xl font-semibold ${faster ? "text-heat-0" : "text-heat-3"}`}
-        >
-          {trimmed(Math.abs(result.improvement_pct))}% {faster ? "faster" : "slower"}
+        <span data-outcome={outcome} className={`text-2xl font-semibold ${headlineColor}`}>
+          {headline}
         </span>
         <span className="text-sm text-ink-2">
           median {formatMs(result.before.median_ms)} → {formatMs(result.after.median_ms)}
         </span>
       </div>
-      {!faster && (
+      {outcome === "slower" && (
         <p className="text-sm">The index made this query slower in the test, so it is not recommended for this query.</p>
       )}
 

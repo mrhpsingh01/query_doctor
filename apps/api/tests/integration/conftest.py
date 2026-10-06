@@ -9,7 +9,7 @@ def pytest_collection_modifyitems(config, items):
     if os.environ.get("QD_REQUIRE_STACK"):
         return
     try:
-        up = httpx.get("http://localhost:8010/api/health", timeout=2).status_code == 200
+        up = httpx.get("http://127.0.0.1:8010/api/health", timeout=2).status_code == 200
     except httpx.HTTPError:
         up = False
     if not up:

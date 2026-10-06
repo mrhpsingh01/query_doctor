@@ -94,6 +94,24 @@ describe("BenchmarkPanel: completed", () => {
     expect(screen.getByText(/made this query slower/i)).toBeInTheDocument();
   });
 
+  it("never claims a speed-up when the output differed; it says the results are not comparable", () => {
+    const run = benchmarkRun();
+    run.result!.checksum_match = false;
+    run.result!.warnings = ["Output differs: the query returned different results"];
+    render(<BenchmarkPanel run={run} />);
+    const headline = screen.getByText(/not comparable/i);
+    expect(headline).toHaveAttribute("data-outcome", "incomparable");
+    expect(screen.queryByText(/% faster/)).not.toBeInTheDocument();
+  });
+
+  it("calls a difference inside the noise 'no measurable change', not a win", () => {
+    const run = benchmarkRun();
+    run.result!.improvement_pct = 0.04;
+    render(<BenchmarkPanel run={run} />);
+    expect(screen.getByText(/no measurable change/i)).toHaveAttribute("data-outcome", "same");
+    expect(screen.queryByText(/% faster/)).not.toBeInTheDocument();
+  });
+
   it("surfaces reliability warnings, and flags different output as blocking", () => {
     const run = benchmarkRun();
     run.result!.warnings = ["High variance in the before timings (CV 30%)", "Output differs: the query returned different results"];

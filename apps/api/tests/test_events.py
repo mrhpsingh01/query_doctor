@@ -43,7 +43,7 @@ def test_blocking_read_times_out_empty():
 
 @pytest.mark.integration
 def test_redis_bus_round_trip_history_and_isolation():
-    bus = RedisEventBus("redis://localhost:6379/0")
+    bus = RedisEventBus("redis://127.0.0.1:6379/0")
     key = f"test:{uuid.uuid4()}"
     bus.publish(key, {"type": "a", "n": 1})
     bus.publish(key, {"type": "b"})

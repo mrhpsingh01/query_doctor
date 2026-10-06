@@ -13,14 +13,14 @@ export default defineConfig({
   retries: 0,
   reporter: [["list"]],
   use: {
-    baseURL: `http://localhost:${PORT}`,
+    baseURL: `http://127.0.0.1:${PORT}`,
     channel: "chrome",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
   webServer: {
     command: `npm run dev -- --port ${PORT}`,
-    url: `http://localhost:${PORT}`,
+    url: `http://127.0.0.1:${PORT}`,
     reuseExistingServer: true,
     timeout: 120_000,
   },

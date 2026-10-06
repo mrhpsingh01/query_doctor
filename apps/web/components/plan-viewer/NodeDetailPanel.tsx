@@ -24,7 +24,7 @@ export function NodeDetailPanel({ node, findings, onClose }: Props) {
   const mine = findings.filter((f) => f.node_ids.includes(node.node_id));
   const actions = [...new Set(mine.flatMap((f) => f.next_actions))];
   const title = node.relation_name ? `${node.node_type} on ${node.relation_name}` : node.node_type;
-  const totalMs = node.actual_time_ms === null || node.loops === null ? null : node.actual_time_ms * node.loops;
+  const totalMs = node.total_time_ms ?? (node.actual_time_ms === null || node.loops === null ? null : node.actual_time_ms * node.loops);
 
   const facts: [string, string][] = [
     ["Estimated rows", formatRows(node.estimated_rows)],

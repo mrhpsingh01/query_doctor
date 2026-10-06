@@ -30,7 +30,7 @@ services:
       POSTGRES_USER: querydoctor
       POSTGRES_PASSWORD: querydoctor
       POSTGRES_DB: querydoctor_sample
-    ports: ["5433:5432"]
+    ports: ["127.0.0.1:5433:5432"]
     volumes:
       - target-data:/var/lib/postgresql/data
       - ./docker/initdb/target:/docker-entrypoint-initdb.d:ro
@@ -46,7 +46,7 @@ services:
       POSTGRES_USER: querydoctor
       POSTGRES_PASSWORD: querydoctor
       POSTGRES_DB: postgres
-    ports: ["5434:5432"]
+    ports: ["127.0.0.1:5434:5432"]
     volumes:
       - bench-data:/var/lib/postgresql/data
       - ./docker/initdb/bench:/docker-entrypoint-initdb.d:ro
@@ -62,7 +62,7 @@ services:
       POSTGRES_USER: querydoctor
       POSTGRES_PASSWORD: querydoctor
       POSTGRES_DB: querydoctor_meta
-    ports: ["5435:5432"]
+    ports: ["127.0.0.1:5435:5432"]
     volumes:
       - meta-data:/var/lib/postgresql/data
     healthcheck:
@@ -73,7 +73,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    ports: ["6379:6379"]
+    ports: ["127.0.0.1:6379:6379"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 3s
@@ -99,7 +99,7 @@ services:
   api:
     <<: *api-build
     environment: *api-env
-    ports: ["${QD_API_PORT:-8010}:8000"]
+    ports: ["127.0.0.1:${QD_API_PORT:-8010}:8000"]
     depends_on:
       seed: {condition: service_completed_successfully}
       querydoctor-db: {condition: service_healthy}
@@ -117,7 +117,7 @@ services:
       args:
         QD_API_URL: http://api:8000
     image: querydoctor/web:dev
-    ports: ["${QD_WEB_PORT:-3000}:3000"]
+    ports: ["127.0.0.1:${QD_WEB_PORT:-3000}:3000"]
     depends_on:
       api: {condition: service_healthy}
 

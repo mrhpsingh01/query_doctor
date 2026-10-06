@@ -10,7 +10,8 @@ import type { PlanNode } from "@/lib/types";
 export function PlanNodeBody({ node, data }: { node: PlanNode; data: NodeVisual }) {
   const heat = HEAT_STYLE[data.severity];
   const target = node.relation_name ?? node.index_name;
-  const totalMs = node.actual_time_ms === null || node.loops === null ? null : node.actual_time_ms * node.loops;
+  // Elapsed time across loops, corrected for parallel workers by the API (falls back to per-loop x loops).
+  const totalMs = node.total_time_ms ?? (node.actual_time_ms === null || node.loops === null ? null : node.actual_time_ms * node.loops);
   const sharePct = data.share === null ? null : Math.round(data.share * 100);
 
   return (

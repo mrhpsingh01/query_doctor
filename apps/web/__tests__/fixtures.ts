@@ -27,6 +27,9 @@ export function node(overrides: Partial<PlanNode> = {}): PlanNode {
     error_ratio: 1,
     filter_waste: null,
     exclusive_time_ms: 1,
+    total_time_ms: 1,
+    exclusive_temp_written_blocks: null,
+    exclusive_temp_read_blocks: null,
     io_pressure: "none",
     raw: {},
     children: [],
@@ -44,6 +47,7 @@ export function slowPlan(): ParsedPlan {
     actual_rows: 10842,
     actual_time_ms: 735.2,
     exclusive_time_ms: 735.2,
+    total_time_ms: 735.2,
     rows_removed_by_filter: 1813561,
     filter_waste: 0.9941,
     filter_condition: "(orders.customer_id = 4242)",
@@ -58,6 +62,7 @@ export function slowPlan(): ParsedPlan {
     actual_rows: 10842,
     actual_time_ms: 741.9,
     exclusive_time_ms: 6.7,
+    total_time_ms: 741.9,
     children: [scan],
   });
   return { root: sort, planning_time_ms: 0.21, execution_time_ms: 742.1, settings: {}, executed: true, fingerprint: "abc" };

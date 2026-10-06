@@ -1,6 +1,6 @@
 """Create the sample schema and bulk-load deterministic data.
 
-    python -m querydoctor.lab.seed --dsn postgresql://querydoctor:querydoctor@localhost:5433/querydoctor_sample --scale small
+    python -m querydoctor.lab.seed --dsn postgresql://querydoctor:querydoctor@127.0.0.1:5433/querydoctor_sample --scale small
 """
 
 from __future__ import annotations

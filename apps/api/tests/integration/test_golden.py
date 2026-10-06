@@ -61,7 +61,7 @@ def test_nothing_is_ever_created_by_analysis(http, results):
     """Candidates are tested with HypoPG only: the target database must still have just its original indexes."""
     import psycopg
 
-    with psycopg.connect("postgresql://querydoctor:querydoctor@localhost:5433/querydoctor_sample") as conn:
+    with psycopg.connect("postgresql://querydoctor:querydoctor@127.0.0.1:5433/querydoctor_sample") as conn:
         names = sorted(r[0] for r in conn.execute("SELECT indexname FROM pg_indexes WHERE schemaname = 'public'"))
     assert all(n.endswith("_pkey") or n == "idx_customers_email" for n in names), names
 
@@ -98,6 +98,6 @@ def test_an_approved_benchmark_runs_in_the_real_sandbox_and_validates_the_index(
 
     import psycopg
 
-    with psycopg.connect("postgresql://qd_bench:qd_bench@localhost:5434/postgres") as conn:
+    with psycopg.connect("postgresql://qd_bench:qd_bench@127.0.0.1:5434/postgres") as conn:
         leftover = conn.execute(r"SELECT count(*) FROM pg_database WHERE datname LIKE 'bench\_%'").fetchone()[0]
         assert leftover == 0

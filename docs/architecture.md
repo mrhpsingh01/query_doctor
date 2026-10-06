@@ -55,21 +55,26 @@ A candidate's `validation` is one of `suggested`, `planner_validated`, `benchmar
 
 * `planner_validated` requires the planner to *use* the hypothetical index and the change to be meaningful (at least
   10% estimated cost reduction, or a sequential scan replaced by an index scan, or a sort removed).
-* `benchmark_validated` requires a completed benchmark with a positive median improvement, matching result checksums
-  and no blocking warning.
+* `benchmark_validated` requires a completed benchmark with a median improvement of at least 10% (below that is
+  indistinguishable from noise), matching result checksums (row order among ties on an `ORDER BY` key is ignored), the new
+  index actually appearing in the indexed plan, and no blocking or high-variance warning.
 
 The planner score is `0.35·cost + 0.25·rows read + 0.20·plan risk + 0.20·operator improvement` (each term 0–1) and is
 documented as evidence, not proof.
 
 ## Design decisions worth knowing
 
-* **The SQL that runs is the SQL that was validated.** The validator returns SQLGlot's canonical rendering of the parsed
-  statement and only that is executed, so what was checked is exactly what runs.
-* **Parameters are never concatenated.** Queries are `PREPARE`d as written and run with `EXPLAIN … EXECUTE`. Values are
-  rendered with psycopg's literal quoting after a type whitelist, and `plan_cache_mode = force_custom_plan` makes the plan
-  reflect the real values.
-* **Row counts in plans are per loop**, as PostgreSQL reports them. Rules multiply by `loops` where totals matter, and
-  finding evidence is always expressed in totals so numbers on one card agree with each other.
+* **PostgreSQL enforces "one statement", not just the validator.** Every user query runs through the extended protocol
+  (`db/protocol.py`: Parse/Bind/Execute), which accepts exactly one statement, so text that fooled a parser still cannot run
+  a second one. Parameters are bound as real protocol parameters, never quoted or interpolated.
+* **What runs is what was validated.** The executed text is SQLGlot's canonical rendering of the parsed statement, and the
+  validator refuses any query whose canonical form does not parse back to the identical tree (SQLGlot can print some
+  constructs, such as an E-string with an escaped backslash, in a form PostgreSQL reads differently).
+* **Row counts and times in plans are per loop**, as PostgreSQL reports them. Rules multiply by `loops` where totals matter,
+  and finding evidence is always expressed in totals so numbers on one card agree with each other. Below a `Gather`, loops
+  count processes, so elapsed time divides by the number of workers + the leader (`total_time_ms`).
+* **Buffer and temp-block counts include children.** Spill rules use the `exclusive_temp_*` values, so an in-memory sort above
+  a spilling join is not reported as a sort spill.
 * **Candidates are tested with HypoPG on the explore instance and measured on the bench instance.** Hypothetical indexes
   influence only plain `EXPLAIN`, so the baseline for scoring is always a planner-only plan.
 * **Benchmark concurrency is capped with Postgres advisory locks** on the bench instance, because several worker

@@ -8,7 +8,7 @@ from app.workers.janitor import cleanup_stale_sandboxes
 
 pytestmark = pytest.mark.integration
 
-BENCH = "postgresql://qd_bench:qd_bench@localhost:5434/postgres"
+BENCH = "postgresql://qd_bench:qd_bench@127.0.0.1:5434/postgres"
 
 
 def leftovers() -> list[str]:
@@ -26,4 +26,4 @@ def test_a_sandbox_abandoned_by_a_crashed_worker_is_removed_but_a_fresh_one_is_n
 
 
 def test_the_janitor_never_raises_when_the_bench_database_is_unreachable():
-    assert cleanup_stale_sandboxes("postgresql://qd_bench:qd_bench@localhost:1/postgres", max_age_s=0) == 0
+    assert cleanup_stale_sandboxes("postgresql://qd_bench:qd_bench@127.0.0.1:1/postgres", max_age_s=0) == 0

@@ -10,7 +10,7 @@ import sys
 from querydoctor.db import ExplainFailed, ExplainTimeout, explain, guarded_connection
 from querydoctor.lab.catalog import build_catalog
 
-DSN = "postgresql://qd_readonly:qd_readonly@localhost:5433/querydoctor_sample"
+DSN = "postgresql://qd_readonly:qd_readonly@127.0.0.1:5433/querydoctor_sample"
 OUT = pathlib.Path(__file__).resolve().parents[1] / "fixtures" / "postgres_plans"
 
 

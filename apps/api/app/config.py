@@ -9,10 +9,10 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_prefix="QD_", env_file=".env", extra="ignore")
 
-    database_url: str = "postgresql+psycopg://querydoctor:querydoctor@localhost:5435/querydoctor_meta"
-    target_dsn: str = "postgresql://qd_readonly:qd_readonly@localhost:5433/querydoctor_sample"
-    bench_dsn: str = "postgresql://qd_bench:qd_bench@localhost:5434/postgres"
-    redis_url: str = "redis://localhost:6379/0"
+    database_url: str = "postgresql+psycopg://querydoctor:querydoctor@127.0.0.1:5435/querydoctor_meta"
+    target_dsn: str = "postgresql://qd_readonly:qd_readonly@127.0.0.1:5433/querydoctor_sample"
+    bench_dsn: str = "postgresql://qd_bench:qd_bench@127.0.0.1:5434/postgres"
+    redis_url: str = "redis://127.0.0.1:6379/0"
     secret_key: str = ""  # Fernet key; empty falls back to a fixed development key (never use in production)
     scale: str = "small"  # data scale of the sample database (used for catalog parameters)
     auto_create_tables: bool = False  # tests / quick local runs; deployments use `alembic upgrade head`

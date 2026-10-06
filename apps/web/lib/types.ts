@@ -30,6 +30,9 @@ export interface PlanNode {
   error_ratio: number | null;
   filter_waste: number | null;
   exclusive_time_ms: number | null;
+  total_time_ms: number | null;
+  exclusive_temp_written_blocks: number | null;
+  exclusive_temp_read_blocks: number | null;
   io_pressure: "none" | "memory" | "disk" | "temp";
   raw: Record<string, unknown>;
   children: PlanNode[];
