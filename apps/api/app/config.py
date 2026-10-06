@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     auto_create_tables: bool = False  # tests / quick local runs; deployments use `alembic upgrade head`
     max_plan_bytes: int = 5_000_000
     max_sql_chars: int = 20_000
+    model_dir: str = "models"  # where ranker.joblib and ranker.meta.json live; a missing model just means heuristic ordering
     seq_scan_min_rows: int | None = None  # overrides the scale-aware default below
 
     def diagnosis_thresholds(self) -> Thresholds:

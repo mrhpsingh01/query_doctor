@@ -3,6 +3,7 @@ from __future__ import annotations
 from functools import lru_cache
 
 from celery.signals import worker_ready
+from querydoctor.ranking.predictor import Predictor
 
 from app.config import get_settings
 from app.database import make_engine, make_sessionmaker
@@ -23,6 +24,7 @@ def _runtime():
         bus=get_event_bus(settings.redis_url),
         max_plan_bytes=settings.max_plan_bytes,
         thresholds=settings.diagnosis_thresholds(),
+        predictor=Predictor.load(settings.model_dir),
     )
     return sessionmaker, deps
 

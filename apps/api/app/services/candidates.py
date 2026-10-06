@@ -13,6 +13,7 @@ from querydoctor.plan_parser import ParsedPlan
 from sqlalchemy.orm import Session
 
 from app.models import Analysis, RecommendationCandidate
+from app.services import ranking
 
 log = logging.getLogger(__name__)
 
@@ -46,11 +47,14 @@ def run_candidate_stage(session: Session, deps, analysis: Analysis, plan: Parsed
         table_rows = {name: info.row_estimate for name, info in schema.tables.items()}
 
         scored: list[ScoredCandidate] = []
+        feature_schema, baseline = schema, plan
         if kept:
             with deps.connect(deps.target_dsn) as conn:
                 # HypoPG only influences plain EXPLAIN, so the baseline must be a planner-only plan.
                 baseline = plan if not analysis.execute else _planner_only(deps, conn, snapshot)
                 scored = deps.scorer(conn, snapshot.sql, snapshot.params, baseline, kept, table_rows)
+                if getattr(deps, "predictor", None) is not None:
+                    feature_schema = ranking.schema_with_extras(deps, conn, schema, list(schema.tables))
     except Exception:
         log.warning("candidate stage failed for analysis %s", analysis.id, exc_info=True)
         session.rollback()
@@ -69,6 +73,14 @@ def run_candidate_stage(session: Session, deps, analysis: Analysis, plan: Parsed
             dropped.append((s, "the planner's estimated improvement is below the threshold worth an index"))
     validated.sort(key=lambda s: -s.comparison.planner_score)
 
+    # Advice from the ranking model: attached to every testable candidate, and only when it has proven itself against the
+    # planner-score heuristic (use_for_ranking) does it order the planner-validated ones. Never touches `validation`.
+    predictor = getattr(deps, "predictor", None)
+    predictions = ranking.predict_candidates(predictor, snapshot.sql, feature_schema, baseline, [*validated, *suggested])
+    model_orders = bool(predictions) and bool(getattr(predictor, "use_for_ranking", False))
+    if model_orders:
+        validated.sort(key=lambda s: -predictions[s.candidate.id].rank_score)
+
     rank = 0
     rows = []
     for s in validated:
@@ -83,6 +95,8 @@ def run_candidate_stage(session: Session, deps, analysis: Analysis, plan: Parsed
         rows.append(_row(analysis, None, candidate, validation="suggested", rank=0, dropped=True, reason=reason))
     analysis.candidates = rows
     session.commit()
+    if predictions:
+        ranking.persist_predictions(session, analysis, predictions, model_orders)
 
 
 def _planner_only(deps, conn, snapshot) -> ParsedPlan:

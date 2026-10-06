@@ -41,6 +41,7 @@ class PipelineDeps:
     thresholds: Thresholds = field(default_factory=Thresholds)
     scorer: Callable = score_candidates  # HypoPG scoring; replaceable in tests
     candidate_stage: Callable | None = field(default=None)  # defaults to the real candidate stage
+    predictor: object | None = None  # querydoctor.ranking.Predictor (or a test double); None means heuristic ordering only
     extra: dict = field(default_factory=dict)
 
 

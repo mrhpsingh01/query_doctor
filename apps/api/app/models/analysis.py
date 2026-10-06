@@ -8,6 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, CreatedMixin
 from app.models.benchmark import BenchmarkRun
+from app.models.ranking import ModelPrediction
 
 
 class QuerySnapshot(CreatedMixin, Base):
@@ -90,3 +91,4 @@ class RecommendationCandidate(Base):
     rank: Mapped[int] = mapped_column(Integer, default=0)
 
     analysis: Mapped[Analysis] = relationship(back_populates="candidates")
+    prediction: Mapped[ModelPrediction | None] = relationship(uselist=False, cascade="all, delete-orphan", lazy="selectin")

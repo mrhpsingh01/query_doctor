@@ -36,6 +36,21 @@ class FindingOut(BaseModel):
     next_actions: list[str]
 
 
+class PredictionOut(BaseModel):
+    """The ranking model's advice about a candidate. Separate from ``validation``: it is never evidence."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    expected_speedup: float
+    p_improve: float
+    expected_index_mb: float
+    p_regression: float
+    rank_score: float
+    used_for_ranking: bool
+    model_version: str
+    contributions: list[dict]
+
+
 class CandidateOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -55,6 +70,7 @@ class CandidateOut(BaseModel):
     dropped: bool
     drop_reason: str | None
     rank: int
+    prediction: PredictionOut | None = None
 
 
 class AnalysisOut(BaseModel):

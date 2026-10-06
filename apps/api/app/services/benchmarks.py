@@ -16,6 +16,7 @@ from querydoctor.benchmark.runner import BenchmarkCancelled, BenchmarkFailed, ru
 from sqlalchemy.orm import Session
 
 from app.models import Analysis, AuditEvent, BenchmarkRun, RecommendationCandidate
+from app.services import ranking
 from app.services.events import EventBus
 from app.services.pipeline import emit
 
@@ -97,4 +98,6 @@ def run_benchmark_job(session: Session, run_id: int, deps: BenchmarkDeps) -> Non
     run.result = result.model_dump()
     if awards_validation(result):  # clear, comparable, attributable to the index (see querydoctor.benchmark.reliability)
         candidate.validation = "benchmark_validated"
+    session.commit()
+    ranking.record_outcome(session, run, candidate, result)  # monitoring only; never affects the benchmark's outcome
     _finish(session, deps, run, "completed", "benchmark_completed")

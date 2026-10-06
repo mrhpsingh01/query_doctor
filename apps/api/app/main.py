@@ -3,9 +3,10 @@ from collections.abc import Callable
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from querydoctor.ranking.predictor import Predictor
 from sqlalchemy import select
 
-from app.api import analyses, benchmarks, connections, projects, samples, workload
+from app.api import analyses, benchmarks, connections, model, projects, samples, workload
 from app.config import Settings, get_settings
 from app.database import make_engine, make_sessionmaker
 from app.models import Base, Project
@@ -43,6 +44,7 @@ def create_app(
         bus=bus,
         max_plan_bytes=settings.max_plan_bytes,
         thresholds=settings.diagnosis_thresholds(),
+        predictor=Predictor.load(settings.model_dir),
     )
 
     bench_deps = benchmark_deps or BenchmarkDeps(bench_dsn=settings.bench_dsn, bus=bus)
@@ -105,7 +107,7 @@ def create_app(
 
     for router in (
         projects.router, analyses.router, analyses.project_router, benchmarks.router, samples.router, connections.router,
-        workload.router,
+        workload.router, model.router,
     ):
         app.include_router(router)
     return app

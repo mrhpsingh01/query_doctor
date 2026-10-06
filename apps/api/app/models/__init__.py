@@ -3,6 +3,7 @@ from app.models.audit import AuditEvent
 from app.models.base import Base
 from app.models.benchmark import BenchmarkRun
 from app.models.project import Connection, Project
+from app.models.ranking import ModelOutcome, ModelPrediction, UserFeedback
 from app.models.workload import WorkloadQueryRow, WorkloadSnapshot
 
 __all__ = [
@@ -12,9 +13,12 @@ __all__ = [
     "BenchmarkRun",
     "Connection",
     "Finding",
+    "ModelOutcome",
+    "ModelPrediction",
     "Project",
     "QuerySnapshot",
     "RecommendationCandidate",
+    "UserFeedback",
     "WorkloadQueryRow",
     "WorkloadSnapshot",
 ]
