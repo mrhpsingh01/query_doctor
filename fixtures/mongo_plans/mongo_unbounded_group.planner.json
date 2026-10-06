@@ -1,0 +1,42 @@
+{
+ "explainVersion": "1",
+ "stages": [
+  {
+   "$cursor": {
+    "queryPlanner": {
+     "namespace": "qd_sample.events",
+     "indexFilterSet": false,
+     "parsedQuery": {},
+     "queryHash": "AF8FB15E",
+     "planCacheKey": "AF8FB15E",
+     "optimizationTimeMillis": 0,
+     "maxIndexedOrSolutionsReached": false,
+     "maxIndexedAndSolutionsReached": false,
+     "maxScansToExplodeReached": false,
+     "winningPlan": {
+      "stage": "PROJECTION_SIMPLE",
+      "transformBy": {
+       "customer_id": 1,
+       "_id": 0
+      },
+      "inputStage": {
+       "stage": "COLLSCAN",
+       "direction": "forward"
+      }
+     },
+     "rejectedPlans": []
+    }
+   }
+  },
+  {
+   "$group": {
+    "_id": "$customer_id",
+    "n": {
+     "$sum": {
+      "$const": 1
+     }
+    }
+   }
+  }
+ ]
+}

@@ -1,0 +1,28 @@
+{
+ "explainVersion": "1",
+ "queryPlanner": {
+  "namespace": "qd_sample.orders",
+  "indexFilterSet": false,
+  "parsedQuery": {
+   "customer_id": {
+    "$eq": 390
+   }
+  },
+  "queryHash": "912E527C",
+  "planCacheKey": "EB59B595",
+  "optimizationTimeMillis": 0,
+  "maxIndexedOrSolutionsReached": false,
+  "maxIndexedAndSolutionsReached": false,
+  "maxScansToExplodeReached": false,
+  "winningPlan": {
+   "stage": "COLLSCAN",
+   "filter": {
+    "customer_id": {
+     "$eq": 390
+    }
+   },
+   "direction": "forward"
+  },
+  "rejectedPlans": []
+ }
+}

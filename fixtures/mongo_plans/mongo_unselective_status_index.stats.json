@@ -1,0 +1,119 @@
+{
+ "explainVersion": "1",
+ "queryPlanner": {
+  "namespace": "qd_sample.orders",
+  "indexFilterSet": false,
+  "parsedQuery": {
+   "status": {
+    "$eq": "completed"
+   }
+  },
+  "queryHash": "46EC84DD",
+  "planCacheKey": "245352D8",
+  "optimizationTimeMillis": 0,
+  "maxIndexedOrSolutionsReached": false,
+  "maxIndexedAndSolutionsReached": false,
+  "maxScansToExplodeReached": false,
+  "winningPlan": {
+   "stage": "PROJECTION_SIMPLE",
+   "transformBy": {
+    "total_amount": 1
+   },
+   "inputStage": {
+    "stage": "FETCH",
+    "inputStage": {
+     "stage": "IXSCAN",
+     "keyPattern": {
+      "status": 1
+     },
+     "indexName": "status_1",
+     "isMultiKey": false,
+     "multiKeyPaths": {
+      "status": []
+     },
+     "isUnique": false,
+     "isSparse": false,
+     "isPartial": false,
+     "indexVersion": 2,
+     "direction": "forward",
+     "indexBounds": {
+      "status": [
+       "[\"completed\", \"completed\"]"
+      ]
+     }
+    }
+   }
+  },
+  "rejectedPlans": []
+ },
+ "executionStats": {
+  "executionSuccess": true,
+  "nReturned": 62007,
+  "executionTimeMillis": 59,
+  "totalKeysExamined": 62007,
+  "totalDocsExamined": 62007,
+  "executionStages": {
+   "stage": "PROJECTION_SIMPLE",
+   "nReturned": 62007,
+   "executionTimeMillisEstimate": 5,
+   "works": 62008,
+   "advanced": 62007,
+   "needTime": 0,
+   "needYield": 0,
+   "saveState": 62,
+   "restoreState": 62,
+   "isEOF": 1,
+   "transformBy": {
+    "total_amount": 1
+   },
+   "inputStage": {
+    "stage": "FETCH",
+    "nReturned": 62007,
+    "executionTimeMillisEstimate": 4,
+    "works": 62008,
+    "advanced": 62007,
+    "needTime": 0,
+    "needYield": 0,
+    "saveState": 62,
+    "restoreState": 62,
+    "isEOF": 1,
+    "docsExamined": 62007,
+    "alreadyHasObj": 0,
+    "inputStage": {
+     "stage": "IXSCAN",
+     "nReturned": 62007,
+     "executionTimeMillisEstimate": 0,
+     "works": 62008,
+     "advanced": 62007,
+     "needTime": 0,
+     "needYield": 0,
+     "saveState": 62,
+     "restoreState": 62,
+     "isEOF": 1,
+     "keyPattern": {
+      "status": 1
+     },
+     "indexName": "status_1",
+     "isMultiKey": false,
+     "multiKeyPaths": {
+      "status": []
+     },
+     "isUnique": false,
+     "isSparse": false,
+     "isPartial": false,
+     "indexVersion": 2,
+     "direction": "forward",
+     "indexBounds": {
+      "status": [
+       "[\"completed\", \"completed\"]"
+      ]
+     },
+     "keysExamined": 62007,
+     "seeks": 1,
+     "dupsTested": 0,
+     "dupsDropped": 0
+    }
+   }
+  }
+ }
+}

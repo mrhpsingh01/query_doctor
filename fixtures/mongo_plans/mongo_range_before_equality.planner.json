@@ -1,0 +1,62 @@
+{
+ "explainVersion": "1",
+ "queryPlanner": {
+  "namespace": "qd_sample.orders",
+  "indexFilterSet": false,
+  "parsedQuery": {
+   "$and": [
+    {
+     "customer_id": {
+      "$eq": 6801
+     }
+    },
+    {
+     "created_at": {
+      "$lt": "2023-06-01"
+     }
+    },
+    {
+     "created_at": {
+      "$gte": "2022-01-01"
+     }
+    }
+   ]
+  },
+  "queryHash": "48A067F2",
+  "planCacheKey": "072BC226",
+  "optimizationTimeMillis": 0,
+  "maxIndexedOrSolutionsReached": false,
+  "maxIndexedAndSolutionsReached": false,
+  "maxScansToExplodeReached": false,
+  "winningPlan": {
+   "stage": "FETCH",
+   "inputStage": {
+    "stage": "IXSCAN",
+    "keyPattern": {
+     "created_at": 1,
+     "customer_id": 1
+    },
+    "indexName": "created_at_1_customer_id_1",
+    "isMultiKey": false,
+    "multiKeyPaths": {
+     "created_at": [],
+     "customer_id": []
+    },
+    "isUnique": false,
+    "isSparse": false,
+    "isPartial": false,
+    "indexVersion": 2,
+    "direction": "forward",
+    "indexBounds": {
+     "created_at": [
+      "[\"2022-01-01\", \"2023-06-01\")"
+     ],
+     "customer_id": [
+      "[6801, 6801]"
+     ]
+    }
+   }
+  },
+  "rejectedPlans": []
+ }
+}

@@ -1,0 +1,92 @@
+{
+ "explainVersion": "1",
+ "stages": [
+  {
+   "$cursor": {
+    "queryPlanner": {
+     "namespace": "qd_sample.events",
+     "indexFilterSet": false,
+     "parsedQuery": {},
+     "queryHash": "AF8FB15E",
+     "planCacheKey": "AF8FB15E",
+     "optimizationTimeMillis": 0,
+     "maxIndexedOrSolutionsReached": false,
+     "maxIndexedAndSolutionsReached": false,
+     "maxScansToExplodeReached": false,
+     "winningPlan": {
+      "stage": "PROJECTION_SIMPLE",
+      "transformBy": {
+       "customer_id": 1,
+       "_id": 0
+      },
+      "inputStage": {
+       "stage": "COLLSCAN",
+       "direction": "forward"
+      }
+     },
+     "rejectedPlans": []
+    },
+    "executionStats": {
+     "executionSuccess": true,
+     "nReturned": 500000,
+     "executionTimeMillis": 352,
+     "totalKeysExamined": 0,
+     "totalDocsExamined": 500000,
+     "executionStages": {
+      "stage": "PROJECTION_SIMPLE",
+      "nReturned": 500000,
+      "executionTimeMillisEstimate": 15,
+      "works": 500001,
+      "advanced": 500000,
+      "needTime": 0,
+      "needYield": 0,
+      "saveState": 520,
+      "restoreState": 520,
+      "isEOF": 1,
+      "transformBy": {
+       "customer_id": 1,
+       "_id": 0
+      },
+      "inputStage": {
+       "stage": "COLLSCAN",
+       "nReturned": 500000,
+       "executionTimeMillisEstimate": 9,
+       "works": 500001,
+       "advanced": 500000,
+       "needTime": 0,
+       "needYield": 0,
+       "saveState": 520,
+       "restoreState": 520,
+       "isEOF": 1,
+       "direction": "forward",
+       "docsExamined": 500000
+      }
+     }
+    }
+   },
+   "nReturned": 500000,
+   "executionTimeMillisEstimate": 216
+  },
+  {
+   "$group": {
+    "_id": "$customer_id",
+    "n": {
+     "$sum": {
+      "$const": 1
+     }
+    }
+   },
+   "maxAccumulatorMemoryUsageBytes": {
+    "n": 960000
+   },
+   "totalOutputDataSizeBytes": 2450000,
+   "usedDisk": false,
+   "spills": 0,
+   "spilledDataStorageSize": 0,
+   "numBytesSpilledEstimate": 0,
+   "spilledRecords": 0,
+   "nReturned": 10000,
+   "executionTimeMillisEstimate": 348
+  }
+ ]
+}

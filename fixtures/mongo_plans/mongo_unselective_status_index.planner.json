@@ -1,0 +1,49 @@
+{
+ "explainVersion": "1",
+ "queryPlanner": {
+  "namespace": "qd_sample.orders",
+  "indexFilterSet": false,
+  "parsedQuery": {
+   "status": {
+    "$eq": "completed"
+   }
+  },
+  "queryHash": "46EC84DD",
+  "planCacheKey": "245352D8",
+  "optimizationTimeMillis": 0,
+  "maxIndexedOrSolutionsReached": false,
+  "maxIndexedAndSolutionsReached": false,
+  "maxScansToExplodeReached": false,
+  "winningPlan": {
+   "stage": "PROJECTION_SIMPLE",
+   "transformBy": {
+    "total_amount": 1
+   },
+   "inputStage": {
+    "stage": "FETCH",
+    "inputStage": {
+     "stage": "IXSCAN",
+     "keyPattern": {
+      "status": 1
+     },
+     "indexName": "status_1",
+     "isMultiKey": false,
+     "multiKeyPaths": {
+      "status": []
+     },
+     "isUnique": false,
+     "isSparse": false,
+     "isPartial": false,
+     "indexVersion": 2,
+     "direction": "forward",
+     "indexBounds": {
+      "status": [
+       "[\"completed\", \"completed\"]"
+      ]
+     }
+    }
+   }
+  },
+  "rejectedPlans": []
+ }
+}

@@ -1,0 +1,169 @@
+{
+ "explainVersion": "1",
+ "stages": [
+  {
+   "$cursor": {
+    "queryPlanner": {
+     "namespace": "qd_sample.customers",
+     "indexFilterSet": false,
+     "parsedQuery": {
+      "$and": [
+       {
+        "segment": {
+         "$eq": "regular"
+        }
+       },
+       {
+        "_id": {
+         "$lte": 150
+        }
+       }
+      ]
+     },
+     "queryHash": "BE667659",
+     "planCacheKey": "D0FD054F",
+     "optimizationTimeMillis": 0,
+     "maxIndexedOrSolutionsReached": false,
+     "maxIndexedAndSolutionsReached": false,
+     "maxScansToExplodeReached": false,
+     "winningPlan": {
+      "stage": "PROJECTION_SIMPLE",
+      "transformBy": {
+       "_id": 1,
+       "email": 1
+      },
+      "inputStage": {
+       "stage": "FETCH",
+       "filter": {
+        "segment": {
+         "$eq": "regular"
+        }
+       },
+       "inputStage": {
+        "stage": "IXSCAN",
+        "keyPattern": {
+         "_id": 1
+        },
+        "indexName": "_id_",
+        "isMultiKey": false,
+        "isUnique": true,
+        "isSparse": false,
+        "isPartial": false,
+        "indexVersion": 2,
+        "direction": "forward",
+        "indexBounds": {
+         "_id": [
+          "[-inf.0, 150]"
+         ]
+        }
+       }
+      }
+     },
+     "rejectedPlans": []
+    },
+    "executionStats": {
+     "executionSuccess": true,
+     "nReturned": 116,
+     "executionTimeMillis": 4493,
+     "totalKeysExamined": 150,
+     "totalDocsExamined": 150,
+     "executionStages": {
+      "stage": "PROJECTION_SIMPLE",
+      "nReturned": 116,
+      "executionTimeMillisEstimate": 0,
+      "works": 151,
+      "advanced": 116,
+      "needTime": 34,
+      "needYield": 0,
+      "saveState": 1,
+      "restoreState": 1,
+      "isEOF": 1,
+      "transformBy": {
+       "_id": 1,
+       "email": 1
+      },
+      "inputStage": {
+       "stage": "FETCH",
+       "filter": {
+        "segment": {
+         "$eq": "regular"
+        }
+       },
+       "nReturned": 116,
+       "executionTimeMillisEstimate": 0,
+       "works": 151,
+       "advanced": 116,
+       "needTime": 34,
+       "needYield": 0,
+       "saveState": 1,
+       "restoreState": 1,
+       "isEOF": 1,
+       "docsExamined": 150,
+       "alreadyHasObj": 0,
+       "inputStage": {
+        "stage": "IXSCAN",
+        "nReturned": 150,
+        "executionTimeMillisEstimate": 0,
+        "works": 151,
+        "advanced": 150,
+        "needTime": 0,
+        "needYield": 0,
+        "saveState": 1,
+        "restoreState": 1,
+        "isEOF": 1,
+        "keyPattern": {
+         "_id": 1
+        },
+        "indexName": "_id_",
+        "isMultiKey": false,
+        "isUnique": true,
+        "isSparse": false,
+        "isPartial": false,
+        "indexVersion": 2,
+        "direction": "forward",
+        "indexBounds": {
+         "_id": [
+          "[-inf.0, 150]"
+         ]
+        },
+        "keysExamined": 150,
+        "seeks": 1,
+        "dupsTested": 0,
+        "dupsDropped": 0
+       }
+      }
+     }
+    }
+   },
+   "nReturned": 116,
+   "executionTimeMillisEstimate": 0
+  },
+  {
+   "$lookup": {
+    "from": "orders",
+    "as": "orders",
+    "localField": "_id",
+    "foreignField": "customer_id"
+   },
+   "totalDocsExamined": 11600000,
+   "totalKeysExamined": 0,
+   "collectionScans": 116,
+   "indexesUsed": [],
+   "nReturned": 116,
+   "executionTimeMillisEstimate": 4493
+  },
+  {
+   "$project": {
+    "_id": true,
+    "email": true,
+    "order_count": {
+     "$size": [
+      "$orders"
+     ]
+    }
+   },
+   "nReturned": 116,
+   "executionTimeMillisEstimate": 4493
+  }
+ ]
+}

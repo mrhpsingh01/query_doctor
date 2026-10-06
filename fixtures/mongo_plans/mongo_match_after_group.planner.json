@@ -1,0 +1,50 @@
+{
+ "explainVersion": "1",
+ "stages": [
+  {
+   "$cursor": {
+    "queryPlanner": {
+     "namespace": "qd_sample.orders",
+     "indexFilterSet": false,
+     "parsedQuery": {
+      "customer_id": {
+       "$eq": 6801
+      }
+     },
+     "queryHash": "5F88B58A",
+     "planCacheKey": "19DF7A0D",
+     "optimizationTimeMillis": 0,
+     "maxIndexedOrSolutionsReached": false,
+     "maxIndexedAndSolutionsReached": false,
+     "maxScansToExplodeReached": false,
+     "winningPlan": {
+      "stage": "PROJECTION_SIMPLE",
+      "transformBy": {
+       "customer_id": 1,
+       "total_amount": 1,
+       "_id": 0
+      },
+      "inputStage": {
+       "stage": "COLLSCAN",
+       "filter": {
+        "customer_id": {
+         "$eq": 6801
+        }
+       },
+       "direction": "forward"
+      }
+     },
+     "rejectedPlans": []
+    }
+   }
+  },
+  {
+   "$group": {
+    "_id": "$customer_id",
+    "total": {
+     "$sum": "$total_amount"
+    }
+   }
+  }
+ ]
+}

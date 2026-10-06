@@ -1,0 +1,54 @@
+{
+ "explainVersion": "1",
+ "queryPlanner": {
+  "namespace": "qd_sample.orders",
+  "indexFilterSet": false,
+  "parsedQuery": {
+   "customer_id": {
+    "$eq": 390
+   }
+  },
+  "queryHash": "912E527C",
+  "planCacheKey": "EB59B595",
+  "optimizationTimeMillis": 0,
+  "maxIndexedOrSolutionsReached": false,
+  "maxIndexedAndSolutionsReached": false,
+  "maxScansToExplodeReached": false,
+  "winningPlan": {
+   "stage": "COLLSCAN",
+   "filter": {
+    "customer_id": {
+     "$eq": 390
+    }
+   },
+   "direction": "forward"
+  },
+  "rejectedPlans": []
+ },
+ "executionStats": {
+  "executionSuccess": true,
+  "nReturned": 3712,
+  "executionTimeMillis": 47,
+  "totalKeysExamined": 0,
+  "totalDocsExamined": 100000,
+  "executionStages": {
+   "stage": "COLLSCAN",
+   "filter": {
+    "customer_id": {
+     "$eq": 390
+    }
+   },
+   "nReturned": 3712,
+   "executionTimeMillisEstimate": 4,
+   "works": 100001,
+   "advanced": 3712,
+   "needTime": 96288,
+   "needYield": 0,
+   "saveState": 100,
+   "restoreState": 100,
+   "isEOF": 1,
+   "direction": "forward",
+   "docsExamined": 100000
+  }
+ }
+}

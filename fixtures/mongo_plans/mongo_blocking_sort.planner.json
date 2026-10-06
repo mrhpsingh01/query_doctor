@@ -1,0 +1,89 @@
+{
+ "explainVersion": "1",
+ "queryPlanner": {
+  "namespace": "qd_sample.events",
+  "indexFilterSet": false,
+  "parsedQuery": {
+   "event_type": {
+    "$eq": "page_view"
+   }
+  },
+  "queryHash": "D120294E",
+  "planCacheKey": "2509EB11",
+  "optimizationTimeMillis": 344,
+  "maxIndexedOrSolutionsReached": false,
+  "maxIndexedAndSolutionsReached": false,
+  "maxScansToExplodeReached": false,
+  "winningPlan": {
+   "stage": "SORT",
+   "sortPattern": {
+    "payload": 1
+   },
+   "memLimit": 104857600,
+   "type": "simple",
+   "inputStage": {
+    "stage": "FETCH",
+    "inputStage": {
+     "stage": "IXSCAN",
+     "keyPattern": {
+      "event_type": 1
+     },
+     "indexName": "event_type_1",
+     "isMultiKey": false,
+     "multiKeyPaths": {
+      "event_type": []
+     },
+     "isUnique": false,
+     "isSparse": false,
+     "isPartial": false,
+     "indexVersion": 2,
+     "direction": "forward",
+     "indexBounds": {
+      "event_type": [
+       "[\"page_view\", \"page_view\"]"
+      ]
+     }
+    }
+   }
+  },
+  "rejectedPlans": [
+   {
+    "stage": "SORT",
+    "sortPattern": {
+     "payload": 1
+    },
+    "memLimit": 104857600,
+    "type": "simple",
+    "inputStage": {
+     "stage": "FETCH",
+     "inputStage": {
+      "stage": "IXSCAN",
+      "keyPattern": {
+       "event_type": 1,
+       "created_at": 1
+      },
+      "indexName": "event_type_1_created_at_1",
+      "isMultiKey": false,
+      "multiKeyPaths": {
+       "event_type": [],
+       "created_at": []
+      },
+      "isUnique": false,
+      "isSparse": false,
+      "isPartial": false,
+      "indexVersion": 2,
+      "direction": "forward",
+      "indexBounds": {
+       "event_type": [
+        "[\"page_view\", \"page_view\"]"
+       ],
+       "created_at": [
+        "[MinKey, MaxKey]"
+       ]
+      }
+     }
+    }
+   }
+  ]
+ }
+}

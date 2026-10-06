@@ -1,0 +1,106 @@
+{
+ "explainVersion": "1",
+ "stages": [
+  {
+   "$cursor": {
+    "queryPlanner": {
+     "namespace": "qd_sample.orders",
+     "indexFilterSet": false,
+     "parsedQuery": {
+      "customer_id": {
+       "$eq": 6801
+      }
+     },
+     "queryHash": "5F88B58A",
+     "planCacheKey": "19DF7A0D",
+     "optimizationTimeMillis": 0,
+     "maxIndexedOrSolutionsReached": false,
+     "maxIndexedAndSolutionsReached": false,
+     "maxScansToExplodeReached": false,
+     "winningPlan": {
+      "stage": "PROJECTION_SIMPLE",
+      "transformBy": {
+       "customer_id": 1,
+       "total_amount": 1,
+       "_id": 0
+      },
+      "inputStage": {
+       "stage": "COLLSCAN",
+       "filter": {
+        "customer_id": {
+         "$eq": 6801
+        }
+       },
+       "direction": "forward"
+      }
+     },
+     "rejectedPlans": []
+    },
+    "executionStats": {
+     "executionSuccess": true,
+     "nReturned": 8,
+     "executionTimeMillis": 38,
+     "totalKeysExamined": 0,
+     "totalDocsExamined": 100000,
+     "executionStages": {
+      "stage": "PROJECTION_SIMPLE",
+      "nReturned": 8,
+      "executionTimeMillisEstimate": 3,
+      "works": 100001,
+      "advanced": 8,
+      "needTime": 99992,
+      "needYield": 0,
+      "saveState": 101,
+      "restoreState": 101,
+      "isEOF": 1,
+      "transformBy": {
+       "customer_id": 1,
+       "total_amount": 1,
+       "_id": 0
+      },
+      "inputStage": {
+       "stage": "COLLSCAN",
+       "filter": {
+        "customer_id": {
+         "$eq": 6801
+        }
+       },
+       "nReturned": 8,
+       "executionTimeMillisEstimate": 3,
+       "works": 100001,
+       "advanced": 8,
+       "needTime": 99992,
+       "needYield": 0,
+       "saveState": 101,
+       "restoreState": 101,
+       "isEOF": 1,
+       "direction": "forward",
+       "docsExamined": 100000
+      }
+     }
+    }
+   },
+   "nReturned": 8,
+   "executionTimeMillisEstimate": 38
+  },
+  {
+   "$group": {
+    "_id": "$customer_id",
+    "total": {
+     "$sum": "$total_amount"
+    }
+   },
+   "maxAccumulatorMemoryUsageBytes": {
+    "total": 96
+   },
+   "totalOutputDataSizeBytes": 245,
+   "usedDisk": false,
+   "spills": 0,
+   "spilledDataStorageSize": 0,
+   "numBytesSpilledEstimate": 0,
+   "spilledRecords": 0,
+   "nReturned": 1,
+   "executionTimeMillisEstimate": 38
+  }
+ ]
+}

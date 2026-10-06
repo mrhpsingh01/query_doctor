@@ -1,0 +1,165 @@
+{
+ "explainVersion": "1",
+ "queryPlanner": {
+  "namespace": "qd_sample.events",
+  "indexFilterSet": false,
+  "parsedQuery": {
+   "event_type": {
+    "$eq": "page_view"
+   }
+  },
+  "queryHash": "D120294E",
+  "planCacheKey": "2509EB11",
+  "optimizationTimeMillis": 279,
+  "maxIndexedOrSolutionsReached": false,
+  "maxIndexedAndSolutionsReached": false,
+  "maxScansToExplodeReached": false,
+  "winningPlan": {
+   "stage": "SORT",
+   "sortPattern": {
+    "payload": 1
+   },
+   "memLimit": 104857600,
+   "type": "simple",
+   "inputStage": {
+    "stage": "FETCH",
+    "inputStage": {
+     "stage": "IXSCAN",
+     "keyPattern": {
+      "event_type": 1
+     },
+     "indexName": "event_type_1",
+     "isMultiKey": false,
+     "multiKeyPaths": {
+      "event_type": []
+     },
+     "isUnique": false,
+     "isSparse": false,
+     "isPartial": false,
+     "indexVersion": 2,
+     "direction": "forward",
+     "indexBounds": {
+      "event_type": [
+       "[\"page_view\", \"page_view\"]"
+      ]
+     }
+    }
+   }
+  },
+  "rejectedPlans": [
+   {
+    "stage": "SORT",
+    "sortPattern": {
+     "payload": 1
+    },
+    "memLimit": 104857600,
+    "type": "simple",
+    "inputStage": {
+     "stage": "FETCH",
+     "inputStage": {
+      "stage": "IXSCAN",
+      "keyPattern": {
+       "event_type": 1,
+       "created_at": 1
+      },
+      "indexName": "event_type_1_created_at_1",
+      "isMultiKey": false,
+      "multiKeyPaths": {
+       "event_type": [],
+       "created_at": []
+      },
+      "isUnique": false,
+      "isSparse": false,
+      "isPartial": false,
+      "indexVersion": 2,
+      "direction": "forward",
+      "indexBounds": {
+       "event_type": [
+        "[\"page_view\", \"page_view\"]"
+       ],
+       "created_at": [
+        "[MinKey, MaxKey]"
+       ]
+      }
+     }
+    }
+   }
+  ]
+ },
+ "executionStats": {
+  "executionSuccess": true,
+  "nReturned": 299219,
+  "executionTimeMillis": 639,
+  "totalKeysExamined": 299219,
+  "totalDocsExamined": 299219,
+  "executionStages": {
+   "stage": "SORT",
+   "nReturned": 299219,
+   "executionTimeMillisEstimate": 157,
+   "works": 598440,
+   "advanced": 299219,
+   "needTime": 299220,
+   "needYield": 0,
+   "saveState": 749,
+   "restoreState": 749,
+   "isEOF": 1,
+   "sortPattern": {
+    "payload": 1
+   },
+   "memLimit": 104857600,
+   "type": "simple",
+   "totalDataSizeSorted": 44550575,
+   "usedDisk": false,
+   "spills": 0,
+   "spilledDataStorageSize": 0,
+   "inputStage": {
+    "stage": "FETCH",
+    "nReturned": 299219,
+    "executionTimeMillisEstimate": 25,
+    "works": 299220,
+    "advanced": 299219,
+    "needTime": 0,
+    "needYield": 0,
+    "saveState": 749,
+    "restoreState": 749,
+    "isEOF": 1,
+    "docsExamined": 299219,
+    "alreadyHasObj": 0,
+    "inputStage": {
+     "stage": "IXSCAN",
+     "nReturned": 299219,
+     "executionTimeMillisEstimate": 12,
+     "works": 299220,
+     "advanced": 299219,
+     "needTime": 0,
+     "needYield": 0,
+     "saveState": 749,
+     "restoreState": 749,
+     "isEOF": 1,
+     "keyPattern": {
+      "event_type": 1
+     },
+     "indexName": "event_type_1",
+     "isMultiKey": false,
+     "multiKeyPaths": {
+      "event_type": []
+     },
+     "isUnique": false,
+     "isSparse": false,
+     "isPartial": false,
+     "indexVersion": 2,
+     "direction": "forward",
+     "indexBounds": {
+      "event_type": [
+       "[\"page_view\", \"page_view\"]"
+      ]
+     },
+     "keysExamined": 299219,
+     "seeks": 1,
+     "dupsTested": 0,
+     "dupsDropped": 0
+    }
+   }
+  }
+ }
+}
