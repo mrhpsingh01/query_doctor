@@ -38,6 +38,13 @@ class Thresholds(BaseModel):
     loop_time_share_warn: float = 0.20
     loop_time_share_critical: float = 0.50
     sort_spill_critical_share: float = 0.50
+    hash_spill_critical_share: float = 0.50
+    index_filter_waste: float = 0.50
+    index_filter_min_rows: int = 1_000
+    wide_result_bytes: int = 200
+    wide_result_warn_bytes: int = 400
+    duplicate_min_cost: float = 1_000.0
+    duplicate_time_share_warn: float = 0.20
 
 
 class AnalysisContext(BaseModel):

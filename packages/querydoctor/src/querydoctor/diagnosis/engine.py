@@ -4,7 +4,7 @@ import logging
 from collections.abc import Sequence
 
 from querydoctor.diagnosis.models import SEVERITY_RANK, AnalysisContext, DiagnosisRule, Finding
-from querydoctor.diagnosis.rules import ALL_RULES
+from querydoctor.diagnosis.rules import ALL_RULES, SUPERSEDES
 from querydoctor.plan_parser import iter_nodes
 
 log = logging.getLogger(__name__)
@@ -25,5 +25,18 @@ def run_diagnosis(context: AnalysisContext, rules: Sequence[DiagnosisRule] | Non
                 continue
             if finding is not None:
                 findings.append(finding)
+    findings = _drop_superseded(findings)
     findings.sort(key=lambda f: (SEVERITY_RANK[f.severity], f.rule_id, f.node_ids))
     return findings
+
+
+def _drop_superseded(findings: list[Finding]) -> list[Finding]:
+    dropped: set[int] = set()
+    for winner in findings:
+        losers = SUPERSEDES.get(winner.rule_id)
+        if not losers:
+            continue
+        for i, other in enumerate(findings):
+            if other.rule_id in losers and set(other.node_ids) & set(winner.node_ids):
+                dropped.add(i)
+    return [f for i, f in enumerate(findings) if i not in dropped]

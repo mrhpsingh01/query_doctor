@@ -16,7 +16,18 @@ confidence.
 | `PG_CARDINALITY_MISESTIMATE` | any | estimate/actual ratio ≥ warn and max(estimate, actual) ≥ min rows | `critical` if ratio ≥ critical, else `warning` | `misestimate_warn=10`, `misestimate_critical=100`, `misestimate_min_rows=1_000` |
 | `PG_REPEATED_NESTED_LOOP` | any | `loops` ≥ min and the node's exclusive time is ≥ share of query time | `critical` if share ≥ critical, else `warning` | `loops_min=100`, `loop_time_share_warn=0.20`, `loop_time_share_critical=0.50` |
 | `PG_SORT_SPILL` | Sort, Incremental Sort | sort method is external or temp blocks written > 0 | `critical` if the sort is ≥ `sort_spill_critical_share` of runtime, else `warning` | `sort_spill_critical_share=0.50` |
+| `PG_HASH_SPILL` | Hash, Hash Join | Hash uses more than one batch or writes temp blocks (a Hash Join is reported only when its Hash child did not already explain the spill) | `critical` if the node is >= `hash_spill_critical_share` of runtime, else `warning` | `hash_spill_critical_share=0.50` |
+| `PG_INDEX_FILTER_REMAINDER` | Index Scan, Index Only Scan, Bitmap Heap Scan | rows visited >= min, waste > threshold, and the leftover filter uses columns the index condition does not (supersedes `PG_HIGH_FILTER_WASTE` on that node) | `critical` if waste > `waste_critical`, else `warning` | `index_filter_min_rows=1_000`, `index_filter_waste=0.50` |
+| `PG_FUNCTION_ON_COLUMN` | Seq Scan | the filter applies a function or cast to a column that leads an existing index (nothing is "blocked" if no such index exists) | `warning` | none |
+| `PG_WIDE_RESULT` | root node | the query has `SELECT *` and the root row width is at least the threshold | `warning` if width >= `wide_result_warn_bytes`, else `info` | `wide_result_bytes=200`, `wide_result_warn_bytes=400` |
+| `PG_DUPLICATE_SUBTREE` | any | two or more structurally identical subtrees read the same table the same way and cost at least the minimum (reported once, at the largest matching subtree) | `warning` if they account for >= `duplicate_time_share_warn` of runtime, else `info` | `duplicate_min_cost=1_000`, `duplicate_time_share_warn=0.20` |
 
 Definitions: *filter waste* = rows removed ÷ (rows returned + rows removed); *error ratio* =
 max(actual ÷ estimate, estimate ÷ actual) with both floored at 1 row; *exclusive time* = node time × loops minus
 the same for its children (never negative).
+
+## Scale-aware default in the API
+
+The sample database's hottest table (`orders`) has exactly 100,000 rows at the `small` scale, which would sit on the
+default `seq_scan_min_rows=100_000` boundary. The API therefore lowers the floor to 50,000 when `QD_SCALE=small`
+(override with `QD_SEQ_SCAN_MIN_ROWS`). The library default is unchanged.
