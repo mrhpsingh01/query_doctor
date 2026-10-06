@@ -51,3 +51,14 @@ def test_sse_replays_history_for_a_finished_analysis(http, sample_query):
             if line.startswith("data: "):
                 types.append(__import__("json").loads(line[6:])["type"])
     assert types[0] == "validating_query" and types[-1] == "completed"
+
+
+def test_a_runaway_query_hits_the_statement_timeout_and_fails_cleanly(http):
+    """A cartesian product of a 500k-row table would run for ages; the 10 s session limit must stop it, the analysis must
+    end `failed` with a readable reason (never hang), and the stack must keep serving afterwards."""
+    body = analyse(http, "SELECT count(*) FROM events a, events b", [], execute=True, timeout=60)
+    assert body["status"] == "failed"
+    assert "timed out" in body["error"]
+    assert http.get("/api/health").json() == {"status": "ok"}
+    follow_up = analyse(http, "SELECT count(*) FROM customers", [])
+    assert follow_up["status"] == "completed"

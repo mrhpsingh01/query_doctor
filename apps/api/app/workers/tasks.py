@@ -2,12 +2,15 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+from celery.signals import worker_ready
+
 from app.config import get_settings
 from app.database import make_engine, make_sessionmaker
 from app.services.benchmarks import BenchmarkDeps, run_benchmark_job
 from app.services.events import get_event_bus
 from app.services.pipeline import PipelineDeps, run_analysis_pipeline
 from app.workers.celery_app import celery_app
+from app.workers.janitor import cleanup_stale_sandboxes
 
 
 @lru_cache
@@ -42,3 +45,8 @@ def run_benchmark(run_id: int) -> None:
     sessionmaker, deps = _benchmark_runtime()
     with sessionmaker() as session:
         run_benchmark_job(session, run_id, deps)
+
+
+@worker_ready.connect
+def _clean_up_after_crashed_workers(**_kwargs) -> None:
+    cleanup_stale_sandboxes(get_settings().bench_dsn)
