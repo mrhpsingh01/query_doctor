@@ -4,8 +4,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { AnalysisList } from "@/components/AnalysisList";
 import { QueryEditor, type QuerySubmission } from "@/components/query-editor/QueryEditor";
+import { ConnectionSelect } from "@/components/settings/ConnectionSelect";
 import { ApiError, api } from "@/lib/api";
-import type { AnalysisSummary, SampleQuery } from "@/lib/types";
+import type { AnalysisSummary, DbConnection, SampleQuery } from "@/lib/types";
 import { useDefaultProject } from "@/lib/useDefaultProject";
 
 function NewAnalysis() {
@@ -17,6 +18,8 @@ function NewAnalysis() {
   const { project, error: projectError } = useDefaultProject();
   const [samples, setSamples] = useState<SampleQuery[] | null>(null);
   const [history, setHistory] = useState<AnalysisSummary[]>([]);
+  const [connections, setConnections] = useState<DbConnection[]>([]);
+  const [connectionId, setConnectionId] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,7 +27,9 @@ function NewAnalysis() {
     api.listSamples().then(setSamples).catch(() => setSamples([]));
   }, []);
   useEffect(() => {
-    if (project) api.listProjectAnalyses(project.id).then((a) => setHistory(a.slice(0, 8))).catch(() => {});
+    if (!project) return;
+    api.listProjectAnalyses(project.id).then((a) => setHistory(a.slice(0, 8))).catch(() => {});
+    api.listConnections(project.id).then(setConnections).catch(() => setConnections([])); // off, or none yet: no selector
   }, [project]);
 
   async function submit(input: QuerySubmission) {
@@ -32,7 +37,7 @@ function NewAnalysis() {
     setBusy(true);
     setError(null);
     try {
-      const { id } = await api.createAnalysis({ ...input, project_id: project.id });
+      const { id } = await api.createAnalysis({ ...input, project_id: project.id, connection_id: connectionId });
       router.push(`/analyses/${id}`);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Something went wrong while starting the analysis. Try again.");
@@ -43,6 +48,7 @@ function NewAnalysis() {
   return (
     <div className="grid gap-8">
       <h1 className="text-2xl font-semibold tracking-tight">New analysis</h1>
+      <ConnectionSelect connections={connections} value={connectionId} onChange={setConnectionId} />
       {samples === null ? (
         <p className="text-sm text-ink-2">Loading…</p>
       ) : (

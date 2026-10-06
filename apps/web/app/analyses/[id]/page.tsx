@@ -1,8 +1,9 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { AnalysisResult } from "@/components/AnalysisResult";
+import { DeleteAnalysisButton } from "@/components/DeleteAnalysisButton";
 import { ProgressStepper } from "@/components/ProgressStepper";
 import { api } from "@/lib/api";
 import type { Analysis } from "@/lib/types";
@@ -10,6 +11,7 @@ import { STAGES, useAnalysisEvents } from "@/lib/useAnalysisEvents";
 
 export default function AnalysisPage() {
   const id = Number(useParams<{ id: string }>().id);
+  const router = useRouter();
   const progress = useAnalysisEvents(Number.isFinite(id) ? id : null);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -43,6 +45,7 @@ export default function AnalysisPage() {
         <h1 className="text-2xl font-semibold tracking-tight">Analysis {analysis.id}</h1>
         <p className="mt-1 text-sm text-ink-2">
           {analysis.execute ? "Measured by running the query" : "Planner estimates only (the query was not run)"}
+          {analysis.connection_id ? " · on a custom connection (benchmarks are not available)" : ""}
         </p>
       </header>
 
@@ -58,6 +61,12 @@ export default function AnalysisPage() {
           lastStage={lastStage ?? analysis.stage}
           message={failure}
         />
+      )}
+
+      {finished && (
+        <footer className="border-t border-line pt-4">
+          <DeleteAnalysisButton analysisId={analysis.id} onDeleted={() => router.push("/projects")} />
+        </footer>
       )}
     </div>
   );

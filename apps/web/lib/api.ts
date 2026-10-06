@@ -1,6 +1,8 @@
 import type {
   Analysis,
   AnalysisSummary,
+  DbConnection,
+  PrivacyInfo,
   Explanation,
   ExplanationKind,
   ModelMonitor,
@@ -52,6 +54,17 @@ export interface CreateAnalysisInput {
   params: unknown[];
   execute: boolean;
   project_id: number;
+  connection_id?: number | null;
+}
+
+export interface CreateConnectionInput {
+  name: string;
+  host: string;
+  port: number;
+  database: string;
+  username: string;
+  password: string;
+  sslmode: "prefer" | "require";
 }
 
 export const api = {
@@ -85,6 +98,12 @@ export const api = {
       body: JSON.stringify({ mode }),
     }),
   listFingerprints: (projectId: number) => request<FingerprintHistory[]>(`/projects/${projectId}/fingerprints`),
+  listConnections: (projectId: number) => request<DbConnection[]>(`/projects/${projectId}/connections`),
+  createConnection: (projectId: number, input: CreateConnectionInput) =>
+    request<DbConnection>(`/projects/${projectId}/connections`, { method: "POST", body: JSON.stringify(input) }),
+  deleteConnection: (id: number) => request<{ deleted: number }>(`/connections/${id}`, { method: "DELETE" }),
+  deleteAnalysis: (id: number) => request<{ deleted: number }>(`/analyses/${id}`, { method: "DELETE" }),
+  getPrivacy: () => request<PrivacyInfo>("/privacy"),
   createExplanation: (analysisId: number, kind: ExplanationKind) =>
     request<{ id: number; status: string }>(`/analyses/${analysisId}/explanations`, { method: "POST", body: JSON.stringify({ kind }) }),
   getExplanation: (id: number) => request<Explanation>(`/explanations/${id}`),

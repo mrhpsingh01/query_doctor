@@ -153,6 +153,8 @@ export interface BenchmarkRun {
 export interface Analysis {
   id: number;
   project_id: number;
+  /** A registered custom connection, or null for the sample database. */
+  connection_id?: number | null;
   status: AnalysisStatus;
   stage: string | null;
   execute: boolean;
@@ -395,4 +397,24 @@ export interface Explanation {
   fallback_reason: string | null;
   reviewed: boolean | null;
   error: string | null;
+}
+
+// Custom connections and privacy (apps/api/app/api/connections.py, privacy.py).
+export interface DbConnection {
+  id: number;
+  project_id: number;
+  name: string;
+  kind: string;
+  host: string;
+  port: number;
+  database: string;
+  username: string;
+  sslmode: "prefer" | "require";
+}
+
+export interface PrivacyInfo {
+  stores: string[];
+  never_stores: string[];
+  deletion: string[];
+  custom_connections_enabled: boolean;
 }

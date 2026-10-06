@@ -175,7 +175,7 @@ export function AnalysisResult({ analysis, onRefresh }: Props) {
         <CandidatesList
           candidates={analysis.candidates}
           analysisId={analysis.id}
-          onApprove={approve}
+          onApprove={analysis.connection_id ? undefined : approve}
           busyCandidateId={[...latestRun.values()].find(isActive)?.candidate_id ?? null}
           renderExtra={(c) => {
             const run = latestRun.get(c.id);
