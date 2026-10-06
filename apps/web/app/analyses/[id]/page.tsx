@@ -2,6 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { AnalysisResult } from "@/components/AnalysisResult";
 import { ProgressStepper } from "@/components/ProgressStepper";
 import { api } from "@/lib/api";
 import type { Analysis } from "@/lib/types";
@@ -45,13 +46,15 @@ export default function AnalysisPage() {
         {analysis.sql}
       </pre>
 
-      {!finished || analysis.status !== "completed" ? (
+      {analysis.status === "completed" ? (
+        <AnalysisResult analysis={analysis} />
+      ) : (
         <ProgressStepper
           current={finished ? analysis.status : progress.current}
           lastStage={lastStage ?? analysis.stage}
           message={failure}
         />
-      ) : null}
+      )}
     </div>
   );
 }

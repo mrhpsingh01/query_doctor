@@ -12,7 +12,7 @@ class SeqScanFilterWaste:
     def evaluate(self, node: PlanNode, context: AnalysisContext) -> Finding | None:
         t = context.thresholds
         if executed(node):
-            removed = node.rows_removed_by_filter or 0
+            removed = (node.rows_removed_by_filter or 0) * (node.loops or 1)  # totals across loops, like visited
             visited, waste, estimated, confidence = rows_visited(node), node.filter_waste, False, 0.92
             if waste is None:
                 return None
@@ -40,6 +40,7 @@ class SeqScanFilterWaste:
                 "rows_visited": int(visited),
                 "rows_removed": removed,
                 "filter_waste": waste,
+                "loops": node.loops,
                 "filter": node.filter_condition,
                 "estimated": estimated,
             },

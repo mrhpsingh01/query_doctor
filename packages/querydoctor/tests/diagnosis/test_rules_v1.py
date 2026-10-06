@@ -56,6 +56,9 @@ def test_seq_scan_waste_ignores_other_node_types():
 def test_seq_scan_waste_multiplies_loops():
     f = evaluate("PG_SEQ_SCAN_FILTER_WASTE", node(rows=1, removed=999, loops=500, filter="(a = 1)"))
     assert f is not None and f.evidence["rows_visited"] == 1_000 * 500
+    # evidence is all in the same unit (totals across loops), so visited = returned + removed always holds
+    assert f.evidence["rows_removed"] == 999 * 500
+    assert f.evidence["loops"] == 500
 
 
 def test_seq_scan_waste_explain_only_uses_schema_with_lower_confidence():
@@ -78,6 +81,12 @@ def test_high_filter_waste_on_index_scan():
     f = evaluate("PG_HIGH_FILTER_WASTE", node("Index Scan", index="idx", rows=1_000, removed=9_000, filter="(b = 2)"))
     assert f is not None and f.severity == "warning"
     assert f.evidence["filter_waste"] == pytest.approx(0.9)
+
+
+def test_high_filter_waste_evidence_uses_totals_across_loops():
+    f = evaluate("PG_HIGH_FILTER_WASTE", node("Index Scan", rows=10, removed=990, loops=20, filter="(b = 2)"))
+    assert f.evidence["rows_visited"] == 1_000 * 20
+    assert f.evidence["rows_removed"] == 990 * 20
 
 
 def test_high_filter_waste_skips_seq_scan_and_small_inputs():

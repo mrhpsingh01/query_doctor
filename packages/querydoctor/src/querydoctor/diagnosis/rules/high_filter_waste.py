@@ -28,8 +28,9 @@ class HighFilterWaste:
                 "table": node.relation_name,
                 "index": node.index_name,
                 "rows_visited": int(visited),
-                "rows_removed": node.rows_removed_by_filter,
+                "rows_removed": (node.rows_removed_by_filter or 0) * (node.loops or 1),  # totals, like rows_visited
                 "filter_waste": waste,
+                "loops": node.loops,
                 "filter": node.filter_condition,
             },
             node_ids=[node.node_id],
