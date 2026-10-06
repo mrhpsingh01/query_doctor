@@ -1,8 +1,8 @@
 # Security
 
 QueryDoctor runs SQL that people paste into a text box, so safety is built in front of every database call, not added
-after. This release only connects to its own sample databases; that boundary is the main defence and the rest are
-layers behind it.
+after. By default it only connects to its own sample databases (PostgreSQL and MongoDB); that boundary is the main defence and the
+rest are layers behind it. Custom PostgreSQL connections are an opt-in described below.
 
 ## Threats and mitigations
 
@@ -23,7 +23,7 @@ layers behind it.
 | Leaked sandboxes, or jobs left "running" by a crashed worker | The drop and slot release run first in a `finally`, before any progress reporting that could fail. A janitor (at worker start and before each benchmark) removes clones older than 15 minutes and fails jobs that never finished. Celery tasks have soft/hard time limits. | `test_sandbox_integration`, `test_runner_integration`, `test_janitor`, `test_stale_jobs` |
 | Resource exhaustion | Query text capped at 20,000 characters; plans capped at 5 MB; at most two concurrent benchmarks (advisory locks); per-benchmark time limit. | `test_adversarial`, `test_runner_integration` |
 | Double approval of a benchmark | Partial unique index: one active run per candidate. | `test_adversarial` |
-| SSRF through "connect your own database" | Connections are not supported yet. `/api/connections/test` accepts only an allowlist of the sample hosts and ports; everything else is a 400. | `test_analyses_api` |
+| SSRF through "connect your own database" | Off by default. When enabled, every host is classified and pinned by the network guard (below); `/api/connections/test` refuses everything else with a 400. MongoDB connections are not supported. | `test_analyses_api`, `test_guard` |
 | Stored credentials | Connection passwords are Fernet-encrypted at rest. No endpoint returns them. | `test_crypto` |
 | Secrets in reports or responses | Reports and API payloads are built from analysis data only; tests assert no connection string or role name appears. | `test_report`, `test_adversarial` |
 | XSS through query text or finding titles | The HTML report escapes every value and loads no external assets; React escapes UI output. | `test_report` |
@@ -52,6 +52,29 @@ is kept for TLS, so a DNS answer that changes later cannot redirect it (rebindin
 Sessions on custom databases are read-only, run as a non-superuser and time out like the sample's. Benchmarks are
 refused for custom connections (409), and index testing is skipped, leaving ideas as *suggested*, when HypoPG is missing.
 Connection errors and block reasons never echo credentials or resolver internals.
+
+## MongoDB
+
+A MongoDB query is a JSON spec, so there is no text for the server to re-parse and no statement separator to smuggle past a
+validator. `querydoctor.mongo.validator` still refuses everything that is not a bounded read:
+
+| Threat | Mitigation | Verified by |
+|---|---|---|
+| Server-side JavaScript (`$where`, `$function`, `$accumulator`) | denied at any depth, including inside `$lookup` sub-pipelines and `$facet` | `test_mongo_validator`, `test_mongo_api` |
+| Writes (`$out`, `$merge`) and unknown stages | stages are an allowlist (`$match`, `$group`, `$sort`, `$limit`, `$skip`, `$project`, `$unwind`, `$lookup`, `$count`, `$addFields`, `$set`, `$unset`, `$facet`, `$bucket`, `$bucketAuto`, `$sample`, `$sortByCount`, `$replaceRoot`, `$replaceWith`); `$out` / `$merge` nested anywhere are denied | `test_mongo_validator` |
+| Operator injection through parameters | parameters must be plain scalars (objects, arrays and non-finite numbers are refused) and are substituted after validation as values, so a parameter can never add an operator | `test_mongo_validator` |
+| Resource exhaustion | spec at most 50,000 bytes, nesting at most 20 deep, `limit` at most 10,000, `skip` at most 1,000,000, regexes at most 200 characters, parameter strings at most 1,000; every command carries `maxTimeMS` (10 s) | `test_mongo_api` |
+| A command assembled from text | the server command is built from the validated structure, never from a string; keys of an index are kept structurally and the display DDL is never executed | `test_mongo_candidates`, `test_mongo_benchmark_integration` |
+| Writing during analysis | the analysis user (`qd_readonly`) holds `read` on the sample database plus `find` on its `system.profile`; nothing else | `test_connectivity_integration` |
+| Leaked sandboxes | `bench_<12 hex>` databases are dropped first in a `finally`; a janitor removes stale ones; slots are a TTL'd lock collection | `test_mongo_benchmark_integration`, `test_janitor`, `test_mongo_api` |
+
+**Known limit: MongoDB roles cannot be scoped to a database-name pattern.** The benchmark user (`qd_bench`, role `qdBench`)
+therefore holds `find`, `insert`, `remove`, `createCollection`, `createIndex`, `dropIndex`, `dropCollection` and
+`dropDatabase` on **every** database of its server, so that it can build and drop `bench_*` copies. QueryDoctor only ever
+names databases that match `^bench_[0-9a-f]{12}$` (checked in the sandbox before every drop), and never `admin`, `local` or
+`config`, but that rule lives in the application, not in MongoDB. The user is not a root, `dbOwner` or `userAdmin`. Anywhere
+the benchmark server holds data that matters, run it as a **dedicated MongoDB deployment**. PostgreSQL has no such gap: its
+sandbox role exists only on the benchmark instance.
 
 ## Explanations and the language model
 
