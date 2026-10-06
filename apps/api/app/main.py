@@ -11,6 +11,7 @@ from sqlalchemy import select
 from app.api import analyses, benchmarks, connections, explanations, model, privacy, projects, samples, workload
 from app.config import Settings, get_settings
 from app.database import make_engine, make_sessionmaker
+from app.logging_utils import install_redaction
 from app.models import Base, Project
 from app.services.events import EventBus, get_event_bus
 from app.services.connections import dsn_builder
@@ -45,6 +46,7 @@ def create_app(
     """Build the API. ``event_bus`` / ``pipeline_deps`` / ``enqueue`` exist so tests can run everything in-process;
     in deployment the defaults hand analyses to the Celery worker over Redis."""
     settings = settings or get_settings()
+    install_redaction()  # no query literal or parameter value reaches any log line
     bus = event_bus or get_event_bus(settings.redis_url)
     deps = pipeline_deps or PipelineDeps(
         target_dsn=settings.target_dsn,

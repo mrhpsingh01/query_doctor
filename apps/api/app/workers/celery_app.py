@@ -1,6 +1,9 @@
 from celery import Celery
 
 from app.config import get_settings
+from app.logging_utils import install_redaction
+
+install_redaction()  # worker logs never carry query literals or parameter values
 
 settings = get_settings()
 
