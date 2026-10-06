@@ -8,8 +8,8 @@ from querydoctor.mongo import validate_mongo
 
 BY_ID = {q.id: q for q in MONGO_CATALOG}
 RULES = {
-    "MONGO_COLLSCAN_LARGE", "MONGO_SCAN_AMPLIFICATION", "MONGO_KEY_AMPLIFICATION", "MONGO_BLOCKING_SORT", "MONGO_COMPOUND_ORDER",
-    "MONGO_UNBOUNDED_AGGREGATION", "MONGO_LOOKUP_NO_INDEX", "MONGO_UNSELECTIVE_INDEX", "MONGO_REDUNDANT_INDEX", "MONGO_STAGE_ORDER",
+    "MONGO_COLLSCAN", "MONGO_SCAN_AMPLIFICATION", "MONGO_KEY_AMPLIFICATION", "MONGO_BLOCKING_SORT", "MONGO_INDEX_ORDER",
+    "MONGO_UNBOUNDED_AGG", "MONGO_LARGE_LOOKUP", "MONGO_UNSELECTIVE_INDEX", "MONGO_REDUNDANT_INDEX", "MONGO_STAGE_ORDER",
 }
 
 
@@ -32,7 +32,7 @@ def test_the_catalog_uses_the_same_heavy_and_light_customers_as_the_sql_lab():
     from querydoctor.lab.catalog import build_catalog
 
     sql = {q.id: q for q in build_catalog("small")}
-    assert BY_ID["mongo_collscan_by_customer"].params == [sql["recent_orders_by_customer"].params[0]]
+    assert BY_ID["mongo_collscan_by_customer"].params == [sql["orders_payments_join"].params[0]]  # the light customer
     assert build_mongo_catalog("tiny")[0].params != BY_ID["mongo_collscan_by_customer"].params
 
 

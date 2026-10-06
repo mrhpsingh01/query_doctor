@@ -5,7 +5,7 @@
   "indexFilterSet": false,
   "parsedQuery": {
    "customer_id": {
-    "$eq": 390
+    "$eq": 6801
    }
   },
   "queryHash": "912E527C",
@@ -18,7 +18,7 @@
    "stage": "COLLSCAN",
    "filter": {
     "customer_id": {
-     "$eq": 390
+     "$eq": 6801
     }
    },
    "direction": "forward"

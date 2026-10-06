@@ -64,7 +64,7 @@
     "executionStats": {
      "executionSuccess": true,
      "nReturned": 116,
-     "executionTimeMillis": 4493,
+     "executionTimeMillis": 4401,
      "totalKeysExamined": 150,
      "totalDocsExamined": 150,
      "executionStages": {
@@ -150,7 +150,7 @@
    "collectionScans": 116,
    "indexesUsed": [],
    "nReturned": 116,
-   "executionTimeMillisEstimate": 4493
+   "executionTimeMillisEstimate": 4400
   },
   {
    "$project": {
@@ -163,7 +163,7 @@
     }
    },
    "nReturned": 116,
-   "executionTimeMillisEstimate": 4493
+   "executionTimeMillisEstimate": 4400
   }
  ]
 }

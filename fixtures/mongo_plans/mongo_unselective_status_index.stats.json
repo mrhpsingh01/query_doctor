@@ -49,7 +49,7 @@
  "executionStats": {
   "executionSuccess": true,
   "nReturned": 62007,
-  "executionTimeMillis": 59,
+  "executionTimeMillis": 57,
   "totalKeysExamined": 62007,
   "totalDocsExamined": 62007,
   "executionStages": {
@@ -69,7 +69,7 @@
    "inputStage": {
     "stage": "FETCH",
     "nReturned": 62007,
-    "executionTimeMillisEstimate": 4,
+    "executionTimeMillisEstimate": 5,
     "works": 62008,
     "advanced": 62007,
     "needTime": 0,
@@ -82,7 +82,7 @@
     "inputStage": {
      "stage": "IXSCAN",
      "nReturned": 62007,
-     "executionTimeMillisEstimate": 0,
+     "executionTimeMillisEstimate": 1,
      "works": 62008,
      "advanced": 62007,
      "needTime": 0,

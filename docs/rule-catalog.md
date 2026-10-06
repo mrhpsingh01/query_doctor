@@ -31,3 +31,25 @@ the same for its children (never negative).
 The sample database's hottest table (`orders`) has exactly 100,000 rows at the `small` scale, which would sit on the
 default `seq_scan_min_rows=100_000` boundary. The API therefore lowers the floor to 50,000 when `QD_SCALE=small`
 (override with `QD_SEQ_SCAN_MIN_ROWS`). The library default is unchanged.
+
+## MongoDB rules
+
+Ten rules read a MongoDB plan (`explain` with `executionStats`, or `queryPlanner` only), the query and the collection's size
+and index list. MongoDB has no cost model, so every number is a measured work counter. Thresholds are the defaults of
+`MongoThresholds`; planner-only plans keep only the rules that need no execution counters, at lower confidence.
+
+| Rule | Fires when | Default | Severity |
+|---|---|---|---|
+| `MONGO_COLLSCAN` | a `COLLSCAN` with a filter reads at least this many documents (executed) or the collection is at least this large (planner-only) | 50,000 documents | critical when 95% of the documents read were discarded, otherwise warning |
+| `MONGO_SCAN_AMPLIFICATION` | `docsExamined / max(nReturned, 1)` of a `FETCH` or `COLLSCAN` (executed only) | at least 20 per result and 1,000 documents | critical at 1,000 per result |
+| `MONGO_KEY_AMPLIFICATION` | `keysExamined / max(nReturned, 1)` of an `IXSCAN` (executed only) | at least 50 per result and 1,000 keys | critical at 500 per result |
+| `MONGO_BLOCKING_SORT` | an in-memory `SORT` over at least this many documents, or any sort that spilled to disk | 10,000 documents | critical when it spilled |
+| `MONGO_INDEX_ORDER` | a compound index puts a range-filtered field before an equality-filtered field the query also uses; recommends equality, sort, range | n/a | warning |
+| `MONGO_UNBOUNDED_AGG` | an aggregation reaches `$group`, `$bucket` or `$facet` with no `$match`, `$limit` or `$sample` before it over a large collection | 50,000 documents | warning |
+| `MONGO_LARGE_LOOKUP` | a `$lookup` examined at least this many documents (executed) or targets an unindexed field of a large collection (planner-only) | 100,000 documents | critical when it used collection scans |
+| `MONGO_UNSELECTIVE_INDEX` | an index scan returned at least this share of the collection (executed only) | 20% and 10,000 keys | warning |
+| `MONGO_REDUNDANT_INDEX` | an index is a prefix of (or identical to) another; unique, partial and TTL indexes are exempt | n/a | info |
+| `MONGO_STAGE_ORDER` | a `$match` follows `$group` (on the group key), `$sort`, or a `$project` that merely keeps its fields, so it could run first | n/a | warning after `$group`, otherwise info |
+
+Scan amplification divides by `max(nReturned, 1)`, so a query that returns nothing is never a division by zero: 500,000
+documents examined for 20 returned is 25,000 per result.

@@ -10,7 +10,7 @@
   },
   "queryHash": "D120294E",
   "planCacheKey": "2509EB11",
-  "optimizationTimeMillis": 279,
+  "optimizationTimeMillis": 290,
   "maxIndexedOrSolutionsReached": false,
   "maxIndexedAndSolutionsReached": false,
   "maxScansToExplodeReached": false,
@@ -89,13 +89,13 @@
  "executionStats": {
   "executionSuccess": true,
   "nReturned": 299219,
-  "executionTimeMillis": 639,
+  "executionTimeMillis": 655,
   "totalKeysExamined": 299219,
   "totalDocsExamined": 299219,
   "executionStages": {
    "stage": "SORT",
    "nReturned": 299219,
-   "executionTimeMillisEstimate": 157,
+   "executionTimeMillisEstimate": 160,
    "works": 598440,
    "advanced": 299219,
    "needTime": 299220,
@@ -115,7 +115,7 @@
    "inputStage": {
     "stage": "FETCH",
     "nReturned": 299219,
-    "executionTimeMillisEstimate": 25,
+    "executionTimeMillisEstimate": 21,
     "works": 299220,
     "advanced": 299219,
     "needTime": 0,
@@ -128,7 +128,7 @@
     "inputStage": {
      "stage": "IXSCAN",
      "nReturned": 299219,
-     "executionTimeMillisEstimate": 12,
+     "executionTimeMillisEstimate": 9,
      "works": 299220,
      "advanced": 299219,
      "needTime": 0,

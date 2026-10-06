@@ -24,7 +24,7 @@
   },
   "queryHash": "1A590490",
   "planCacheKey": "85164F58",
-  "optimizationTimeMillis": 2,
+  "optimizationTimeMillis": 4,
   "maxIndexedOrSolutionsReached": false,
   "maxIndexedAndSolutionsReached": false,
   "maxScansToExplodeReached": false,

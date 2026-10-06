@@ -23,9 +23,9 @@ def build_mongo_catalog(scale: str = "small") -> list[SampleQuery]:
     return [
         SampleQuery(
             id="mongo_collscan_by_customer", engine="mongodb", title="Orders of one customer: a collection scan",
-            sql=_spec(find="orders", filter={"customer_id": {"$param": 1}}), params=[heavy],
+            sql=_spec(find="orders", filter={"customer_id": {"$param": 1}}), params=[light],
             description="orders has no index on customer_id, so every order is read to find one customer's.",
-            expected_rule_ids=["MONGO_COLLSCAN_LARGE", "MONGO_SCAN_AMPLIFICATION"],
+            expected_rule_ids=["MONGO_COLLSCAN", "MONGO_SCAN_AMPLIFICATION"],
             expected_candidate_table="orders", expected_candidate_columns=["customer_id"],
         ),
         SampleQuery(
@@ -45,7 +45,7 @@ def build_mongo_catalog(scale: str = "small") -> list[SampleQuery]:
             id="mongo_range_before_equality", engine="mongodb", title="An index with the range field first",
             sql=_spec(find="orders", filter={"created_at": {"$gte": {"$param": 1}, "$lt": {"$param": 2}}, "customer_id": {"$param": 3}}), params=["2022-01-01", "2023-06-01", light],
             description="The existing index starts with created_at, so the whole date range is scanned for one customer.",
-            expected_rule_ids=["MONGO_KEY_AMPLIFICATION", "MONGO_COMPOUND_ORDER"], expected_candidate_table="orders",
+            expected_rule_ids=["MONGO_KEY_AMPLIFICATION", "MONGO_INDEX_ORDER"], expected_candidate_table="orders",
             expected_candidate_columns=["customer_id", "created_at"],
         ),
         SampleQuery(
@@ -56,7 +56,7 @@ def build_mongo_catalog(scale: str = "small") -> list[SampleQuery]:
                 {"$project": {"email": 1, "order_count": {"$size": "$orders"}}},
             ]), params=["regular", 150],
             description="For every customer the join scans the whole orders collection, because orders.customer_id has no index.",
-            expected_rule_ids=["MONGO_LOOKUP_NO_INDEX"], expected_candidate_table="orders", expected_candidate_columns=["customer_id"],
+            expected_rule_ids=["MONGO_LARGE_LOOKUP"], expected_candidate_table="orders", expected_candidate_columns=["customer_id"],
         ),
         SampleQuery(
             id="mongo_match_after_group", engine="mongodb", title="Filtering after grouping",
@@ -71,7 +71,7 @@ def build_mongo_catalog(scale: str = "small") -> list[SampleQuery]:
             id="mongo_unbounded_group", engine="mongodb", title="An unbounded $group over a big collection",
             sql=_spec(aggregate="events", pipeline=[{"$group": {"_id": "$customer_id", "n": {"$sum": 1}}}]), params=[],
             description="Every event is read and grouped with no filter and no limit.",
-            expected_rule_ids=["MONGO_UNBOUNDED_AGGREGATION"],
+            expected_rule_ids=["MONGO_UNBOUNDED_AGG"],
         ),
         SampleQuery(
             id="mongo_unselective_status_index", engine="mongodb", title="An index that matches most of the collection",

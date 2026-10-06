@@ -5,7 +5,7 @@
   "indexFilterSet": false,
   "parsedQuery": {
    "customer_id": {
-    "$eq": 390
+    "$eq": 6801
    }
   },
   "queryHash": "912E527C",
@@ -18,7 +18,7 @@
    "stage": "COLLSCAN",
    "filter": {
     "customer_id": {
-     "$eq": 390
+     "$eq": 6801
     }
    },
    "direction": "forward"
@@ -27,22 +27,22 @@
  },
  "executionStats": {
   "executionSuccess": true,
-  "nReturned": 3712,
-  "executionTimeMillis": 47,
+  "nReturned": 8,
+  "executionTimeMillis": 34,
   "totalKeysExamined": 0,
   "totalDocsExamined": 100000,
   "executionStages": {
    "stage": "COLLSCAN",
    "filter": {
     "customer_id": {
-     "$eq": 390
+     "$eq": 6801
     }
    },
-   "nReturned": 3712,
+   "nReturned": 8,
    "executionTimeMillisEstimate": 4,
    "works": 100001,
-   "advanced": 3712,
-   "needTime": 96288,
+   "advanced": 8,
+   "needTime": 99992,
    "needYield": 0,
    "saveState": 100,
    "restoreState": 100,
