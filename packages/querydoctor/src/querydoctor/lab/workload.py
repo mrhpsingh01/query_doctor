@@ -21,6 +21,7 @@ import psycopg
 from querydoctor.db.protocol import execute_single
 from querydoctor.lab.catalog import build_catalog
 from querydoctor.lab.generator import COUNTS, top_customers
+from querydoctor.lab.mongo_catalog import build_mongo_catalog
 
 DATES = ("2021-01-01", "2022-01-01", "2022-06-01", "2023-01-01", "2023-06-01")
 STATUSES = ("pending", "completed", "shipped", "cancelled", "refunded", "processing")
@@ -123,11 +124,101 @@ def run_workload(dsn: str, scale: str, mode: str, *, seed: int = 7, scale_calls:
     return done
 
 
+# ---- MongoDB traffic -------------------------------------------------------------------------------------------------
+
+MONGO_BASELINE_CALLS = {
+    "mongo_collscan_by_customer": 800,  # the hot one: ~13 ms x 800 dominates total time
+    "mongo_status_and_date_range": 600,
+    "mongo_blocking_sort": 20,
+    "mongo_range_before_equality": 40,
+    "mongo_lookup_without_index": 4,
+    "mongo_match_after_group": 4,
+    "mongo_unbounded_group": 3,
+    "mongo_unselective_status_index": 100,
+    "mongo_pk_customer_lookup": 6000,
+}
+MONGO_CHEAP_SPEC = '{"find": "customers", "filter": {"_id": {"$param": 1}}, "limit": 1}'
+
+
+def _mongo_params(query_id: str, scale: str, rng: random.Random, pick_customer) -> list[Any]:
+    n = COUNTS[scale]
+    if query_id == "mongo_status_and_date_range":
+        month, day = rng.randint(1, 11), rng.randint(1, 20)
+        return ["refunded", f"2023-{month:02d}-{day:02d}", f"2023-{month:02d}-{day + 7:02d}"]
+    if query_id == "mongo_collscan_by_customer":
+        return [pick_customer()]
+    if query_id == "mongo_blocking_sort":
+        return [rng.choice(RARE_EVENTS)]
+    if query_id == "mongo_range_before_equality":
+        return [rng.choice(DATES[:3]), "2023-06-01", pick_customer()]
+    if query_id == "mongo_lookup_without_index":
+        return ["regular", rng.randint(3, 6)]  # a handful of customers: each costs a scan of orders
+    if query_id == "mongo_match_after_group":
+        return [pick_customer()]
+    if query_id == "mongo_unbounded_group":
+        return []
+    if query_id == "mongo_unselective_status_index":
+        return ["completed"]
+    if query_id == "mongo_pk_customer_lookup":
+        return [rng.randint(1, n["customers"])]
+    raise KeyError(query_id)
+
+
+def mongo_workload_plan(scale: str, mode: str, *, seed: int = 7, scale_calls: float = 1.0) -> list[PlannedCall]:
+    """Like ``workload_plan`` for the MongoDB catalog: ``sql`` holds the JSON spec, ``params`` its placeholders."""
+    rng = random.Random(seed)
+    pick_customer = _customers(scale, rng)
+    spec_for = {q.id: q.sql for q in build_mongo_catalog(scale)} | {"mongo_pk_customer_lookup": MONGO_CHEAP_SPEC}
+    calls: list[PlannedCall] = []
+    if mode == "baseline":
+        for query_id, base in MONGO_BASELINE_CALLS.items():
+            for _ in range(max(1, round(base * scale_calls))):
+                calls.append(PlannedCall(query_id, spec_for[query_id], tuple(_mongo_params(query_id, scale, rng, pick_customer))))
+        rng.shuffle(calls)
+    elif mode == "regress":
+        for _ in range(max(25, round(25 * scale_calls))):
+            calls.append(PlannedCall("mongo_blocking_sort", spec_for["mongo_blocking_sort"], (rng.choice(BIG_EVENTS),)))
+    else:
+        raise ValueError(f"unknown workload mode {mode!r}")
+    return calls
+
+
+def reset_mongo_profile(admin_uri: str, db: str = "qd_sample") -> None:
+    """Empty the profiler's capped collection (needs a privileged user) and keep level 2, so a baseline run starts clean."""
+    from pymongo import MongoClient
+
+    from querydoctor.lab.mongo_seed import PROFILER_BYTES
+
+    with MongoClient(admin_uri, serverSelectionTimeoutMS=5000) as client:
+        target = client[db]
+        target.command("profile", 0)
+        target.drop_collection("system.profile")
+        target.create_collection("system.profile", capped=True, size=PROFILER_BYTES)
+        target.command("profile", 2)
+
+
+def run_mongo_workload(uri: str, scale: str, mode: str, *, seed: int = 7, scale_calls: float = 1.0, db: str = "qd_sample") -> dict[str, int]:
+    """Execute the planned calls with the read-only user. Returns calls made per query id."""
+    from pymongo import MongoClient
+
+    from querydoctor.mongo import build_command, validate_mongo
+
+    done: dict[str, int] = {}
+    with MongoClient(uri, serverSelectionTimeoutMS=5000) as client:
+        target = client[db]
+        for call in mongo_workload_plan(scale, mode, seed=seed, scale_calls=scale_calls):
+            vq = validate_mongo(call.sql, list(call.params))
+            target.command(build_command(vq, 30_000))
+            done[call.query_id] = done.get(call.query_id, 0) + 1
+    return done
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Generate demo traffic for the workload dashboard")
-    parser.add_argument("--dsn", required=True, help="read-only role used to run the queries")
+    parser.add_argument("--engine", choices=["postgres", "mongodb"], default="postgres")
+    parser.add_argument("--dsn", required=True, help="read-only role (PostgreSQL DSN or MongoDB URI) used to run the queries")
     parser.add_argument("--admin-dsn", help="privileged role, only needed with --reset")
-    parser.add_argument("--reset", action="store_true", help="reset pg_stat_statements first")
+    parser.add_argument("--reset", action="store_true", help="reset pg_stat_statements (or empty the MongoDB profiler) first")
     parser.add_argument("--mode", choices=["baseline", "regress"], default="baseline")
     parser.add_argument("--scale", choices=sorted(COUNTS), default="small")
     parser.add_argument("--scale-calls", type=float, default=1.0)
@@ -135,8 +226,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.reset:
         if not args.admin_dsn:
             parser.error("--reset needs --admin-dsn")
-        reset_statistics(args.admin_dsn)
-    done = run_workload(args.dsn, args.scale, args.mode, scale_calls=args.scale_calls)
+        (reset_mongo_profile if args.engine == "mongodb" else reset_statistics)(args.admin_dsn)
+    runner = run_mongo_workload if args.engine == "mongodb" else run_workload
+    done = runner(args.dsn, args.scale, args.mode, scale_calls=args.scale_calls)
     print(f"workload {args.mode}: {sum(done.values()):,} calls across {len(done)} queries")
     return 0
 

@@ -18,7 +18,7 @@ from app.services.connections import dsn_builder
 from app.services.explanations import ExplainDeps, run_explanation_job
 from app.services.benchmarks import BenchmarkDeps, run_benchmark_job
 from app.services.pipeline import PipelineDeps, run_analysis_pipeline
-from app.services.workload import WorkloadDeps, run_demo_traffic
+from app.services.workload import WorkloadDeps, run_demo_traffic, run_mongo_demo_traffic
 
 SAMPLE_PROJECT_NAME = "Sample shop"
 
@@ -69,8 +69,17 @@ def create_app(
     def demo_in_thread(mode: str) -> None:
         threading.Thread(target=run_demo_traffic, args=(settings.target_dsn, settings.scale, mode), daemon=True).start()
 
+    def mongo_demo_in_worker(mode: str) -> None:
+        from app.workers.tasks import run_demo_workload
+
+        run_demo_workload.delay(mode, "mongodb")
+
+    def mongo_demo_in_thread(mode: str) -> None:
+        threading.Thread(target=run_mongo_demo_traffic, args=(settings.mongo_target_uri, settings.scale, mode), daemon=True).start()
+
     wl_deps = workload_deps or WorkloadDeps(
-        target_dsn=settings.target_dsn, demo_runner=demo_in_thread if in_process else demo_in_worker
+        target_dsn=settings.target_dsn, demo_runner=demo_in_thread if in_process else demo_in_worker,
+        mongo_uri=settings.mongo_target_uri, mongo_demo_runner=mongo_demo_in_thread if in_process else mongo_demo_in_worker,
     )
 
     @asynccontextmanager

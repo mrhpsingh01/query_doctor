@@ -15,7 +15,7 @@ from app.services.connections import dsn_builder
 from app.services.events import get_event_bus
 from app.services.explanations import ExplainDeps, run_explanation_job
 from app.services.pipeline import PipelineDeps, run_analysis_pipeline
-from app.services.workload import run_demo_traffic
+from app.services.workload import run_demo_traffic, run_mongo_demo_traffic
 from app.workers.celery_app import celery_app
 from app.workers.janitor import cleanup_stale_mongo_sandboxes, cleanup_stale_sandboxes, fail_orphaned_jobs, fail_stale_jobs
 
@@ -80,8 +80,10 @@ def run_explanation(explanation_id: int) -> None:
 
 
 @celery_app.task(name="qd.run_demo_workload")
-def run_demo_workload(mode: str) -> dict[str, int]:
+def run_demo_workload(mode: str, engine: str = "postgres") -> dict[str, int]:
     settings = get_settings()
+    if engine == "mongodb":
+        return run_mongo_demo_traffic(settings.mongo_target_uri, settings.scale, mode)
     return run_demo_traffic(settings.target_dsn, settings.scale, mode)
 
 

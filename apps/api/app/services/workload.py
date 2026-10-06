@@ -11,6 +11,11 @@ from typing import Any
 import psycopg
 
 from querydoctor.lab.catalog import build_catalog
+from querydoctor.lab.mongo_catalog import build_mongo_catalog
+from querydoctor.mongo import normalize_plan as normalize_mongo_plan
+from querydoctor.mongo import validate_mongo
+from querydoctor.mongo.workload import read_profile
+from querydoctor.plan_parser import iter_nodes
 from querydoctor.safety import validate_query
 from querydoctor.workload import WorkloadQuery, merge_statements, read_statements
 from querydoctor.workload.analysis import build_panels, detect_regressions, plan_changes, rank
@@ -20,6 +25,7 @@ from sqlalchemy.orm import Session
 from app.models import Analysis, RecommendationCandidate, WorkloadQueryRow, WorkloadSnapshot
 
 RANKED_LIMIT = 100
+MONGO_PROFILE_LIMIT = 5_000  # profile entries read per import (a rolling window of the most recent operations)
 EVIDENCE_ORDER = ("suggested", "planner_validated", "benchmark_validated")
 
 
@@ -31,6 +37,10 @@ class WorkloadDeps:
     connect: Callable[[str], AbstractContextManager] = psycopg.connect
     reader: Callable[..., list] | None = None  # (conn, limit) -> list[StatementRow]; default: pg_stat_statements
     demo_runner: Callable[[str], None] = lambda mode: None  # starts the demo traffic generator in the background
+    mongo_uri: str = ""
+    mongo_connect: Callable[[str], AbstractContextManager] | None = None  # default: querydoctor.mongo.schema.mongo_connect
+    mongo_reader: Callable[..., tuple[list, int]] | None = None  # (db, limit) -> (queries, skipped); default: the profiler
+    mongo_demo_runner: Callable[[str], None] = lambda mode: None
 
 
 def _query(row: WorkloadQueryRow) -> WorkloadQuery:
@@ -49,9 +59,12 @@ def snapshot_dict(s: WorkloadSnapshot) -> dict[str, Any]:
     }
 
 
-def import_snapshot(session: Session, conn, project_id: int, limit: int = 500, reader=None) -> WorkloadSnapshot:
-    queries, skipped = merge_statements((reader or read_statements)(conn, limit))
-    snapshot = WorkloadSnapshot(project_id=project_id, query_count=len(queries), skipped_count=skipped)
+def import_snapshot(session: Session, conn, project_id: int, limit: int = 500, reader=None, engine: str = "postgres") -> WorkloadSnapshot:
+    if engine == "mongodb":
+        queries, skipped = (reader or read_profile)(conn, MONGO_PROFILE_LIMIT)
+    else:
+        queries, skipped = merge_statements((reader or read_statements)(conn, limit))
+    snapshot = WorkloadSnapshot(project_id=project_id, engine=engine, source="profiler" if engine == "mongodb" else "pg_stat_statements", query_count=len(queries), skipped_count=skipped)
     session.add(snapshot)
     session.flush()
     session.add_all(
@@ -61,12 +74,13 @@ def import_snapshot(session: Session, conn, project_id: int, limit: int = 500, r
     return snapshot
 
 
-def _snapshots(session: Session, project_id: int) -> list[WorkloadSnapshot]:
-    return list(session.scalars(select(WorkloadSnapshot).where(WorkloadSnapshot.project_id == project_id).order_by(WorkloadSnapshot.id.desc())))
+def _snapshots(session: Session, project_id: int, engine: str = "postgres") -> list[WorkloadSnapshot]:
+    stmt = select(WorkloadSnapshot).where(WorkloadSnapshot.project_id == project_id, WorkloadSnapshot.engine == engine)
+    return list(session.scalars(stmt.order_by(WorkloadSnapshot.id.desc())))
 
 
-def latest_two(session: Session, project_id: int) -> tuple[WorkloadSnapshot | None, WorkloadSnapshot | None]:
-    found = _snapshots(session, project_id)[:2]
+def latest_two(session: Session, project_id: int, engine: str = "postgres") -> tuple[WorkloadSnapshot | None, WorkloadSnapshot | None]:
+    found = _snapshots(session, project_id, engine)[:2]
     return (found[0] if found else None, found[1] if len(found) > 1 else None)
 
 
@@ -82,9 +96,12 @@ def _validated_fingerprints(session: Session, project_id: int) -> set[str]:
     return {a.snapshot.fingerprint for a in session.scalars(stmt).unique()}
 
 
-def dashboard(session: Session, project_id: int, snapshot_id: int | None = None, compare_id: int | None = None) -> dict[str, Any]:
-    """The workload view of one snapshot (default: the latest) compared with another (default: the one before it)."""
-    snapshots = _snapshots(session, project_id)
+def dashboard(
+    session: Session, project_id: int, snapshot_id: int | None = None, compare_id: int | None = None, engine: str = "postgres"
+) -> dict[str, Any]:
+    """The workload view of one snapshot (default: the latest) compared with another (default: the one before it).
+    Snapshots of different engines never mix: each engine has its own history."""
+    snapshots = _snapshots(session, project_id, engine)
     if not snapshots and snapshot_id is None and compare_id is None:
         return {"snapshot": None, "compare_to": None, "queries": [], "panels": build_panels([], validated_fingerprints=set(), regressions=[]).model_dump(mode="json"), "regressions": []}
     by_id = {s.id: s for s in snapshots}
@@ -131,6 +148,11 @@ def _operators(analysis: Analysis) -> list[str]:
     raw = analysis.plan_json
     if not raw:
         return []
+    if analysis.engine == "mongodb":
+        try:
+            return [n.node_type for n in iter_nodes(normalize_mongo_plan(raw).root)]
+        except Exception:  # a stored plan that no longer parses must not break the history view
+            return []
     root = raw[0].get("Plan") if isinstance(raw, list) and raw else None
     found: list[str] = []
 
@@ -178,7 +200,10 @@ def fingerprint_history(session: Session, project_id: int) -> list[dict[str, Any
 def _catalog_sample(fingerprint: str, scale: str) -> dict[str, Any] | None:
     for q in build_catalog(scale):
         if validate_query(q.sql).fingerprint == fingerprint:
-            return {"query_id": q.id, "title": q.title, "sql": q.sql, "params": list(q.params)}
+            return {"query_id": q.id, "title": q.title, "sql": q.sql, "params": list(q.params), "engine": "postgres"}
+    for q in build_mongo_catalog(scale):
+        if validate_mongo(q.sql, list(q.params)).fingerprint == fingerprint:
+            return {"query_id": q.id, "title": q.title, "sql": q.sql, "params": list(q.params), "engine": "mongodb"}
     return None
 
 
@@ -223,3 +248,10 @@ def run_demo_traffic(target_dsn: str, scale: str, mode: str) -> dict[str, int]:
     from querydoctor.lab.workload import run_workload
 
     return run_workload(target_dsn, scale, mode)
+
+
+def run_mongo_demo_traffic(mongo_uri: str, scale: str, mode: str) -> dict[str, int]:
+    """The MongoDB counterpart: the same shape of traffic through the read-only user."""
+    from querydoctor.lab.workload import run_mongo_workload
+
+    return run_mongo_workload(mongo_uri, scale, mode)

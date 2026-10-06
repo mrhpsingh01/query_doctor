@@ -13,6 +13,7 @@ from querydoctor.mongo.plan import normalize_plan
 from querydoctor.mongo.rules import MongoContext, run_mongo_diagnosis
 from querydoctor.mongo.schema import collect_mongo_schema
 from querydoctor.mongo.validator import MAX_BYTES, validate_mongo
+from querydoctor.mongo.workload import read_profile
 
 NO_HYPOTHETICAL_NOTE = "MongoDB has no hypothetical indexes, so this stays a suggestion until a benchmark measures it."
 
@@ -65,4 +66,4 @@ class MongoAdapter:
         )
 
     def collect_workload(self, conn, limit: int):
-        return [], 0  # the profiler import arrives with the workload task
+        return read_profile(conn, limit)

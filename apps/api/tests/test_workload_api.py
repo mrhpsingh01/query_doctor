@@ -111,7 +111,7 @@ def test_detail_404_for_an_unknown_fingerprint_and_200_for_a_known_one(api, targ
 
 def test_demo_returns_202_and_runs_the_runner_with_the_mode(api, target):
     r = api.post("/api/projects/1/workload/demo", json={"mode": "regress"})
-    assert r.status_code == 202 and r.json() == {"status": "queued", "mode": "regress"}
+    assert r.status_code == 202 and r.json() == {"status": "queued", "mode": "regress", "engine": "postgres"}
     assert api.post("/api/projects/1/workload/demo", json={"mode": "baseline"}).status_code == 202
     assert target.demo_calls == ["regress", "baseline"]
 

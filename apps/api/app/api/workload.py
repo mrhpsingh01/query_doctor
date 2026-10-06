@@ -5,6 +5,8 @@ from typing import Literal
 import psycopg
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
+from pymongo.errors import PyMongoError
+from querydoctor.mongo.schema import mongo_connect
 from sqlalchemy.orm import Session
 
 from app.deps import get_session
@@ -19,8 +21,16 @@ IMPORT_FAILED = (
 )
 
 
+MONGO_IMPORT_FAILED = (
+    "Could not read the MongoDB profiler (system.profile). Check that the server is running, that the profiler is on, "
+    "and that the read-only user may read system.profile."
+)
+Engine = Literal["postgres", "mongodb"]
+
+
 class DemoRequest(BaseModel):
     mode: Literal["baseline", "regress"]
+    engine: Engine = "postgres"
 
 
 def _project(session: Session, project_id: int) -> Project:
@@ -31,9 +41,17 @@ def _project(session: Session, project_id: int) -> Project:
 
 
 @router.post("/workload/import", status_code=201)
-def import_workload(project_id: int, request: Request, session: Session = Depends(get_session)):
+def import_workload(project_id: int, request: Request, engine: Engine = "postgres", session: Session = Depends(get_session)):
     _project(session, project_id)
     deps: svc.WorkloadDeps = request.app.state.workload_deps
+    if engine == "mongodb":
+        try:
+            with (deps.mongo_connect or mongo_connect)(deps.mongo_uri) as db:
+                snapshot = svc.import_snapshot(session, db, project_id, reader=deps.mongo_reader, engine="mongodb")
+        except PyMongoError as exc:  # messages can quote the connection string
+            session.rollback()
+            raise HTTPException(502, detail=MONGO_IMPORT_FAILED) from exc
+        return svc.snapshot_dict(snapshot)
     try:
         with deps.connect(deps.target_dsn) as conn:
             snapshot = svc.import_snapshot(session, conn, project_id, reader=deps.reader)
@@ -45,11 +63,12 @@ def import_workload(project_id: int, request: Request, session: Session = Depend
 
 @router.get("/workload")
 def get_workload(
-    project_id: int, snapshot: int | None = None, compare: int | None = None, session: Session = Depends(get_session)
+    project_id: int, snapshot: int | None = None, compare: int | None = None, engine: Engine = "postgres",
+    session: Session = Depends(get_session),
 ):
     _project(session, project_id)
     try:
-        return svc.dashboard(session, project_id, snapshot_id=snapshot, compare_id=compare)
+        return svc.dashboard(session, project_id, snapshot_id=snapshot, compare_id=compare, engine=engine)
     except LookupError as exc:
         raise HTTPException(404, detail=str(exc)) from exc
 
@@ -66,8 +85,9 @@ def get_query_detail(project_id: int, fingerprint: str, request: Request, sessio
 @router.post("/workload/demo", status_code=202)
 def run_demo(project_id: int, body: DemoRequest, request: Request, session: Session = Depends(get_session)):
     _project(session, project_id)
-    request.app.state.workload_deps.demo_runner(body.mode)
-    return {"status": "queued", "mode": body.mode}
+    deps = request.app.state.workload_deps
+    (deps.mongo_demo_runner if body.engine == "mongodb" else deps.demo_runner)(body.mode)
+    return {"status": "queued", "mode": body.mode, "engine": body.engine}
 
 
 @router.get("/fingerprints")
