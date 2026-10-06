@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { CandidatesList } from "@/components/candidates/CandidatesList";
 import { FindingsList } from "@/components/findings/FindingsList";
 import { NodeDetailPanel } from "@/components/plan-viewer/NodeDetailPanel";
 import { PlanGraph } from "@/components/plan-viewer/PlanGraph";
@@ -98,6 +99,16 @@ export function AnalysisResult({ analysis }: { analysis: Analysis }) {
             graphRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
           }}
         />
+      </section>
+      <section aria-labelledby="ideas-h" className="grid gap-3">
+        <h2 id="ideas-h" className="text-lg font-semibold">
+          Index ideas
+        </h2>
+        <p className="text-sm text-ink-2">
+          Each idea says how well it is backed: suggested from the query, picked by the planner in a what-if test, or
+          measured faster in a benchmark. Nothing is ever created for you.
+        </p>
+        <CandidatesList candidates={analysis.candidates} />
       </section>
     </div>
   );

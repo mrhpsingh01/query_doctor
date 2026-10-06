@@ -12,6 +12,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
+from querydoctor.candidates import score_candidates
 from querydoctor.db import DbError, ExplainTimeout, cancel_backend, collect_schema, explain, guarded_connection
 from querydoctor.diagnosis import AnalysisContext, Thresholds, run_diagnosis
 from querydoctor.plan_parser import parse_explain
@@ -38,7 +39,8 @@ class PipelineDeps:
     cancel_backend: Callable = cancel_backend
     max_plan_bytes: int = 5_000_000
     thresholds: Thresholds = field(default_factory=Thresholds)
-    candidate_stage: Callable | None = None  # set by the candidate engine (v0.2)
+    scorer: Callable = score_candidates  # HypoPG scoring; replaceable in tests
+    candidate_stage: Callable | None = field(default=None)  # defaults to the real candidate stage
     extra: dict = field(default_factory=dict)
 
 
@@ -150,5 +152,6 @@ def _run(session: Session, deps: PipelineDeps, analysis: Analysis) -> None:
     session.commit()
 
     _stage(session, deps, analysis, "testing_candidates")
-    if deps.candidate_stage is not None:
-        deps.candidate_stage(session, deps, analysis, plan, schema, vq, findings)
+    from app.services.candidates import run_candidate_stage
+
+    (deps.candidate_stage or run_candidate_stage)(session, deps, analysis, plan, schema, vq, findings)

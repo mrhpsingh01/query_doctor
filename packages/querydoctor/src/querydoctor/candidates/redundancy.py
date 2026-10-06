@@ -25,6 +25,9 @@ def _existing_reason(c: IndexCandidate, idx: IndexInfo) -> str | None:
     # A full (non-partial) existing index serves a partial candidate too; a partial one only serves the same predicate.
     if idx.predicate is not None and idx.predicate != c.predicate:
         return None
+    if idx.unique and idx.predicate is None and idx_keys == keys:
+        # Lookups on a unique key return at most one row; covering columns would not change that.
+        return f"duplicate of existing index {idx.name} (a unique key: lookups return at most one row)"
     if not _covers_include(c.include, idx.columns, idx.include):
         return None
     if idx_keys == keys:

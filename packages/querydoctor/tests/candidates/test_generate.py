@@ -150,6 +150,15 @@ def test_left_prefix_of_an_existing_index_is_dropped_and_primary_keys_count():
     assert all("existing index" in r for r in dropped.values())
 
 
+def test_a_unique_index_already_identifies_a_single_row_so_even_a_covering_variant_is_dropped():
+    kept, dropped = prune(
+        [cand("id", include=["total_amount"])], [existing("orders_pkey", ["id"], unique=True)]
+    )
+    assert kept == []
+    reason = next(iter(dropped.values()))
+    assert "existing index orders_pkey" in reason and "at most one row" in reason
+
+
 def test_a_candidate_that_adds_covering_columns_is_not_redundant():
     kept, _ = prune(
         [cand("customer_id", include=["total_amount"])], [existing("idx_cust", ["customer_id", "created_at"])]

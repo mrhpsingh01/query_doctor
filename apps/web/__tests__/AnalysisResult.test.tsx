@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { AnalysisResult } from "@/components/AnalysisResult";
 import type { Analysis } from "@/lib/types";
-import { finding, slowPlan } from "./fixtures";
+import { candidate, finding, slowPlan } from "./fixtures";
 
 // React Flow needs real layout; the graph is replaced by one button per operator.
 vi.mock("@/components/plan-viewer/PlanGraph", () => ({
@@ -61,6 +61,12 @@ describe("AnalysisResult", () => {
     render(<AnalysisResult analysis={analysis({ execute: false, plan: planned, execution_time_ms: null })} />);
     expect(screen.getByText(/estimates only/i)).toBeInTheDocument();
     expect(screen.queryByText(/of the time is spent/i)).not.toBeInTheDocument();
+  });
+
+  it("lists index ideas with their evidence level under the findings", () => {
+    render(<AnalysisResult analysis={analysis({ candidates: [candidate()] })} />);
+    expect(screen.getByRole("heading", { name: /index ideas/i })).toBeInTheDocument();
+    expect(screen.getByText("Planner-validated")).toBeInTheDocument();
   });
 
   it("shows a message instead of a graph when the plan is missing", () => {

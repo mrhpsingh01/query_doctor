@@ -77,3 +77,39 @@ export function finding(overrides: Partial<Finding> = {}): Finding {
     ...overrides,
   };
 }
+
+export function candidate(overrides: Partial<import("@/lib/types").Candidate> = {}): import("@/lib/types").Candidate {
+  return {
+    id: 1,
+    candidate_key: "70eea4f86778",
+    table_name: "orders",
+    ddl: "CREATE INDEX ON orders (customer_id, created_at DESC) INCLUDE (id, total_amount)",
+    columns: [
+      { name: "customer_id", desc: false },
+      { name: "created_at", desc: true },
+    ],
+    include: ["id", "total_amount"],
+    predicate: null,
+    expression: null,
+    rationale: ["equality on customer_id", "range on created_at"],
+    source_rule_ids: ["PG_SEQ_SCAN_FILTER_WASTE"],
+    validation: "planner_validated",
+    planner_score: 0.95,
+    comparison: {
+      cost_reduction: 0.964,
+      rows_reduction: 0.99,
+      plan_risk_reduction: 0.5,
+      operator_improvement: 0.7,
+      planner_score: 0.95,
+      uses_candidate: true,
+      removed_operators: ["Seq Scan"],
+      added_operators: ["Index Scan"],
+      cost_before: 61527,
+      cost_after: 2200,
+    },
+    dropped: false,
+    drop_reason: null,
+    rank: 1,
+    ...overrides,
+  };
+}

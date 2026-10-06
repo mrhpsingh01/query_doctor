@@ -87,7 +87,7 @@ def test_unknown_project_is_404(client):
 def test_execute_true_is_audited_and_false_is_not(client, stub):
     plain = submit(client).json()["id"]
     executed = submit(client, execute=True).json()["id"]
-    assert stub.explain_calls[-1]["execute"] is True
+    assert True in [c["execute"] for c in stub.explain_calls]  # (candidates add a planner-only EXPLAIN afterwards)
     session = client.app.state.sessionmaker()
     types = lambda aid: [e.event_type for e in session.scalars(select(AuditEvent).where(AuditEvent.analysis_id == aid))]
     assert "execute_explain_requested" not in types(plain)
@@ -161,3 +161,23 @@ def test_connection_test_allows_sample_hosts(client):
     response = client.post("/api/connections/test", json=body)
     assert response.status_code == 200 and response.json() == {"ok": True, "message": "ok"}
     assert "password" not in response.text
+
+
+def test_analysis_and_history_expose_candidates_with_their_evidence_level(settings, bus, stub):
+    from fastapi.testclient import TestClient
+    from test_pipeline_candidates import HEADLINE_SQL, comparison, fake_scorer
+
+    from app.main import create_app
+
+    deps = stub.deps(bus, scorer=fake_scorer({"INCLUDE": comparison(score=0.95)}))
+    with TestClient(create_app(settings, event_bus=bus, pipeline_deps=deps)) as c:
+        pid = c.get("/api/projects").json()[0]["id"]
+        body = {"sql": HEADLINE_SQL, "params": [4242, "2022-01-01"], "execute": False, "project_id": pid}
+        analysis_id = c.post("/api/analyses", json=body).json()["id"]
+        detail = c.get(f"/api/analyses/{analysis_id}").json()
+        validated = [x for x in detail["candidates"] if x["validation"] == "planner_validated"]
+        assert validated and validated[0]["rank"] == 1 and validated[0]["planner_score"] == 0.95
+        assert validated[0]["comparison"]["removed_operators"] == ["Seq Scan"]
+        assert all(x["drop_reason"] for x in detail["candidates"] if x["dropped"])
+        history = c.get(f"/api/projects/{pid}/analyses").json()
+        assert history[0]["best_validation"] == "planner_validated"
