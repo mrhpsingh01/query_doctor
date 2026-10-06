@@ -40,3 +40,25 @@ def test_readonly_role_can_read_pg_stat_statements_for_all_roles():
         # with the privilege the query text of every role is visible (without it, other roles' text is <insufficient privilege>)
         texts = [r[0] for r in conn.execute("SELECT query FROM pg_stat_statements WHERE query LIKE 'COPY%' LIMIT 5")]
         assert texts and all("insufficient privilege" not in t for t in texts)
+
+
+def test_with_workload_needs_a_workload_dsn():
+    from querydoctor.lab.seed import main
+
+    with pytest.raises(SystemExit):
+        main(["--dsn", TARGET_ADMIN_DSN, "--with-workload"])
+
+
+def test_warm_workload_resets_statistics_and_leaves_demo_traffic_to_import():
+    from labdsn import TARGET_RO_DSN
+
+    from querydoctor.lab.seed import warm_workload
+    from querydoctor.workload import merge_statements, read_statements
+
+    seed(TARGET_ADMIN_DSN, "small")
+    done = warm_workload(TARGET_ADMIN_DSN, TARGET_RO_DSN, "small", scale_calls=0.1)
+    assert done["recent_orders_by_customer"] >= 100
+    with psycopg.connect(TARGET_RO_DSN) as conn:
+        queries, _skipped = merge_statements(read_statements(conn, limit=200))
+    assert max(q.calls for q in queries) >= 500  # the cheap lookups
+    assert not any("COPY" in q.sample_sql for q in queries)  # the seeding statements were reset away

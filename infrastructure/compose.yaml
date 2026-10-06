@@ -86,7 +86,8 @@ services:
       - sh
       - -c
       - >-
-        python -m querydoctor.lab.seed --if-empty --scale $${QD_SCALE}
+        python -m querydoctor.lab.seed --if-empty --scale $${QD_SCALE} --with-workload
+        --workload-dsn postgresql://qd_readonly:qd_readonly@target-postgres:5432/querydoctor_sample
         --dsn postgresql://querydoctor:querydoctor@target-postgres:5432/querydoctor_sample &&
         python -m querydoctor.lab.seed --if-empty --scale $${QD_SCALE}
         --dsn postgresql://qd_bench:qd_bench@bench-postgres:5432/querydoctor_sample
