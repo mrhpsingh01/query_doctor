@@ -20,6 +20,12 @@ const LEVELS: Record<Validation, { label: string; explanation: string; style: st
   },
 };
 
+export const VALIDATION_LABELS: Record<Validation, string> = {
+  suggested: LEVELS.suggested.label,
+  planner_validated: LEVELS.planner_validated.label,
+  benchmark_validated: LEVELS.benchmark_validated.label,
+};
+
 export function ValidationBadge({ validation }: { validation: Validation }) {
   const level = LEVELS[validation];
   return (

@@ -113,3 +113,42 @@ export function candidate(overrides: Partial<import("@/lib/types").Candidate> = 
     ...overrides,
   };
 }
+
+export function runStats(median: number, extra: Partial<import("@/lib/types").RunStats> = {}): import("@/lib/types").RunStats {
+  return { n: 7, median_ms: median, p95_ms: median * 1.1, mean_ms: median, stdev_ms: median * 0.04, cv: 0.04, min_ms: median * 0.95, max_ms: median * 1.15, ...extra };
+}
+
+export function benchmarkRun(overrides: Partial<import("@/lib/types").BenchmarkRun> = {}): import("@/lib/types").BenchmarkRun {
+  const before = [700, 742, 750, 735, 760, 740, 745].map((ms) => ({ execution_ms: ms, planning_ms: 0.2, rows: 10, shared_hit_blocks: 5, shared_read_blocks: 9, temp_blocks: 0 }));
+  const after = [40, 41, 43, 41, 39, 42, 41].map((ms) => ({ execution_ms: ms, planning_ms: 0.2, rows: 10, shared_hit_blocks: 5, shared_read_blocks: 0, temp_blocks: 0 }));
+  return {
+    id: 3,
+    analysis_id: 1,
+    candidate_id: 1,
+    status: "completed",
+    stage: "teardown",
+    config: { runs: 7, warmups: 1 },
+    result: {
+      before: { ...runStats(742), p95_ms: 811 },
+      after: { ...runStats(41), p95_ms: 48 },
+      before_samples: before,
+      after_samples: after,
+      improvement_pct: 94.47,
+      index_size_bytes: 86_000_000,
+      index_build_ms: 4200,
+      plan_fingerprint_before: "aaa",
+      plan_fingerprint_after: "bbb",
+      checksum_match: true,
+      warnings: [],
+      pg_version: "PostgreSQL 16.15",
+      settings: { work_mem: "4096" },
+      dataset_snapshot: "adf070622df0",
+      ddl: "CREATE INDEX ON orders (customer_id)",
+    },
+    error: null,
+    created_at: "2026-01-01T00:00:00Z",
+    started_at: null,
+    finished_at: null,
+    ...overrides,
+  };
+}

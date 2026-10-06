@@ -75,6 +75,58 @@ export interface Candidate {
   rank: number;
 }
 
+export interface RunStats {
+  n: number;
+  median_ms: number;
+  p95_ms: number;
+  mean_ms: number;
+  stdev_ms: number;
+  cv: number;
+  min_ms: number;
+  max_ms: number;
+}
+
+export interface RunSample {
+  execution_ms: number;
+  planning_ms: number | null;
+  rows: number | null;
+  shared_hit_blocks: number | null;
+  shared_read_blocks: number | null;
+  temp_blocks: number | null;
+}
+
+export interface BenchmarkResult {
+  before: RunStats;
+  after: RunStats;
+  before_samples: RunSample[];
+  after_samples: RunSample[];
+  improvement_pct: number;
+  index_size_bytes: number;
+  index_build_ms: number;
+  plan_fingerprint_before: string;
+  plan_fingerprint_after: string;
+  checksum_match: boolean;
+  warnings: string[];
+  pg_version: string;
+  settings: Record<string, unknown>;
+  dataset_snapshot: string;
+  ddl: string;
+}
+
+export interface BenchmarkRun {
+  id: number;
+  analysis_id: number;
+  candidate_id: number;
+  status: AnalysisStatus;
+  stage: string | null;
+  config: Record<string, unknown>;
+  result: BenchmarkResult | null;
+  error: string | null;
+  created_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+}
+
 export interface Analysis {
   id: number;
   project_id: number;
@@ -91,6 +143,7 @@ export interface Analysis {
   execution_time_ms: number | null;
   findings: Finding[];
   candidates: Candidate[];
+  benchmarks: BenchmarkRun[];
   created_at: string;
   started_at: string | null;
   finished_at: string | null;

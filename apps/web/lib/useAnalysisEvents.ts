@@ -10,7 +10,7 @@ export const STAGES = [
   "diagnosing",
   "testing_candidates",
 ] as const;
-const TERMINAL = new Set(["completed", "failed", "cancelled"]);
+const TERMINAL = new Set(["completed", "failed", "cancelled", "benchmark_completed"]);
 
 export interface ProgressState {
   /** Every event seen so far, in order. */
@@ -30,7 +30,7 @@ export function useAnalysisEvents(analysisId: number | null, url?: string): Prog
   const state = tagged.key === streamKey ? tagged.value : EMPTY;
 
   useEffect(() => {
-    if (streamKey === null) return;
+    if (streamKey === null || typeof EventSource === "undefined") return;
     const source = new EventSource(streamKey);
 
     source.addEventListener("progress", (message) => {

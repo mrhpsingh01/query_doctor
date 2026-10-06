@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { Candidate } from "@/lib/types";
 import { CandidateCard } from "./CandidateCard";
 
@@ -5,9 +6,11 @@ interface Props {
   candidates: Candidate[];
   onApprove?: (candidate: Candidate) => void;
   busyCandidateId?: number | null;
+  /** Rendered under each recommended card (the benchmark panel). */
+  renderExtra?: (candidate: Candidate) => ReactNode;
 }
 
-export function CandidatesList({ candidates, onApprove, busyCandidateId = null }: Props) {
+export function CandidatesList({ candidates, onApprove, busyCandidateId = null, renderExtra }: Props) {
   const recommended = candidates.filter((c) => !c.dropped).sort((a, b) => a.rank - b.rank);
   const ruledOut = candidates.filter((c) => c.dropped);
 
@@ -23,7 +26,10 @@ export function CandidatesList({ candidates, onApprove, busyCandidateId = null }
     <div className="grid gap-4">
       {recommended.length === 0 && <p className="text-sm text-ink-2">No index idea survived testing for this query.</p>}
       {recommended.map((c) => (
-        <CandidateCard key={c.id} candidate={c} onApprove={onApprove} busy={busyCandidateId === c.id} />
+        <div key={c.id} className="grid gap-2">
+          <CandidateCard candidate={c} onApprove={onApprove} busy={busyCandidateId === c.id} />
+          {renderExtra?.(c)}
+        </div>
       ))}
 
       {ruledOut.length > 0 && (

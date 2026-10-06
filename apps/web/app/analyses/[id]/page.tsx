@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AnalysisResult } from "@/components/AnalysisResult";
 import { ProgressStepper } from "@/components/ProgressStepper";
 import { api } from "@/lib/api";
@@ -14,11 +14,15 @@ export default function AnalysisPage() {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Load once on arrival (finished analyses have nothing more to stream) and again when the stream ends.
-  useEffect(() => {
+  const reload = useCallback(() => {
     if (!Number.isFinite(id)) return;
     api.getAnalysis(id).then(setAnalysis).catch((e: Error) => setLoadError(e.message));
-  }, [id, progress.done]);
+  }, [id]);
+
+  // Load once on arrival (finished analyses have nothing more to stream) and again when the stream ends.
+  useEffect(() => {
+    reload();
+  }, [reload, progress.done]);
 
   if (loadError) {
     return (
@@ -47,7 +51,7 @@ export default function AnalysisPage() {
       </pre>
 
       {analysis.status === "completed" ? (
-        <AnalysisResult analysis={analysis} />
+        <AnalysisResult analysis={analysis} onRefresh={reload} />
       ) : (
         <ProgressStepper
           current={finished ? analysis.status : progress.current}

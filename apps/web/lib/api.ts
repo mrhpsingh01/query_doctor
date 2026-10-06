@@ -49,4 +49,12 @@ export const api = {
   getAnalysis: (id: number) => request<Analysis>(`/analyses/${id}`),
   cancelAnalysis: (id: number) => request<{ id: number; status: string }>(`/analyses/${id}/cancel`, { method: "POST" }),
   listProjectAnalyses: (projectId: number) => request<AnalysisSummary[]>(`/projects/${projectId}/analyses`),
+  approveBenchmark: (analysisId: number, candidateId: number, runs = 7) =>
+    request<{ id: number; status: string }>(`/analyses/${analysisId}/candidates/${candidateId}/benchmark`, {
+      method: "POST",
+      body: JSON.stringify({ runs }),
+    }),
+  cancelBenchmark: (runId: number) => request<{ id: number; status: string }>(`/benchmarks/${runId}/cancel`, { method: "POST" }),
+  /** Where a finished analysis's report can be downloaded (a plain link, not a fetch). */
+  reportUrl: (analysisId: number, format: "md" | "html") => `/api/analyses/${analysisId}/report?format=${format}`,
 };

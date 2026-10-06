@@ -26,3 +26,11 @@ export function formatPercent(ratio: number | null | undefined): string {
 export function formatNumber(value: number): string {
   return value.toLocaleString("en-US", { maximumFractionDigits: 2 });
 }
+
+export function formatBytes(bytes: number | null | undefined): string {
+  if (bytes === null || bytes === undefined) return NA;
+  if (bytes < 1024) return `${Math.round(bytes)} B`;
+  if (bytes < 1024 ** 2) return `${trim(bytes / 1024, 1)} KB`;
+  if (bytes < 1024 ** 3) return `${trim(bytes / 1024 ** 2, 1)} MB`;
+  return `${trim(bytes / 1024 ** 3, 1)} GB`;
+}

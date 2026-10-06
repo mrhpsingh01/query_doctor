@@ -46,8 +46,8 @@ describe("useAnalysisEvents", () => {
     expect(source.closed).toBe(true);
   });
 
-  it("treats failed and cancelled as terminal too", () => {
-    for (const terminal of ["failed", "cancelled"]) {
+  it("treats failed, cancelled and a finished benchmark as terminal too", () => {
+    for (const terminal of ["failed", "cancelled", "benchmark_completed"]) {
       const { result } = renderHook(() => useAnalysisEvents(1));
       const source = FakeEventSource.instances.at(-1)!;
       act(() => source.emit(terminal, { message: "boom" }));
@@ -63,6 +63,12 @@ describe("useAnalysisEvents", () => {
     const source = FakeEventSource.instances[0];
     unmount();
     expect(source.closed).toBe(true);
+  });
+
+  it("does nothing, rather than crashing, where EventSource is unavailable", () => {
+    vi.stubGlobal("EventSource", undefined);
+    const { result } = renderHook(() => useAnalysisEvents(5));
+    expect(result.current).toEqual({ events: [], current: null, done: false });
   });
 
   it("ignores malformed events", () => {
