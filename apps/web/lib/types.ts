@@ -2,6 +2,8 @@
 
 export type Severity = "info" | "warning" | "critical";
 export type Validation = "suggested" | "planner_validated" | "benchmark_validated";
+/** The database engines QueryDoctor analyses. */
+export type Engine = "postgres" | "mongodb";
 export type AnalysisStatus = "queued" | "running" | "completed" | "failed" | "cancelled";
 
 export interface PlanNode {
@@ -34,6 +36,9 @@ export interface PlanNode {
   exclusive_temp_written_blocks: number | null;
   exclusive_temp_read_blocks: number | null;
   io_pressure: "none" | "memory" | "disk" | "temp";
+  /** MongoDB only: documents / index keys this stage examined (absent or null for PostgreSQL). */
+  docs_examined?: number | null;
+  keys_examined?: number | null;
   raw: Record<string, unknown>;
   children: PlanNode[];
 }
@@ -45,6 +50,7 @@ export interface ParsedPlan {
   settings: Record<string, string>;
   executed: boolean;
   fingerprint: string;
+  engine?: string;
 }
 
 export interface Finding {
@@ -155,6 +161,7 @@ export interface Analysis {
   project_id: number;
   /** A registered custom connection, or null for the sample database. */
   connection_id?: number | null;
+  engine?: Engine;
   status: AnalysisStatus;
   stage: string | null;
   execute: boolean;
@@ -176,6 +183,7 @@ export interface Analysis {
 
 export interface AnalysisSummary {
   id: number;
+  engine?: Engine;
   status: AnalysisStatus;
   execute: boolean;
   sql: string;
@@ -196,6 +204,8 @@ export interface Project {
 
 export interface SampleQuery {
   id: string;
+  /** Absent on older responses: PostgreSQL. */
+  engine?: Engine;
   title: string;
   sql: string;
   params: unknown[];
@@ -305,7 +315,7 @@ export interface WorkloadQueryDetail {
     validation: Validation | null;
   }[];
   plan_changes: PlanChange[];
-  sample: { query_id: string; title: string; sql: string; params: unknown[] } | null;
+  sample: { query_id: string; title: string; sql: string; params: unknown[]; engine?: Engine } | null;
 }
 
 // The ranking model (apps/api/app/api/model.py).

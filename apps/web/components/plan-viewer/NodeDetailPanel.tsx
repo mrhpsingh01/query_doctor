@@ -7,6 +7,8 @@ interface Props {
   node: PlanNode;
   findings: Finding[];
   onClose: () => void;
+  /** "mongodb" lists documents and keys examined instead of planner estimates. Default: PostgreSQL. */
+  engine?: string;
 }
 
 function Section({ title, id, children }: { title: string; id: string; children: React.ReactNode }) {
@@ -20,18 +22,28 @@ function Section({ title, id, children }: { title: string; id: string; children:
   );
 }
 
-export function NodeDetailPanel({ node, findings, onClose }: Props) {
+export function NodeDetailPanel({ node, findings, onClose, engine }: Props) {
   const mine = findings.filter((f) => f.node_ids.includes(node.node_id));
   const actions = [...new Set(mine.flatMap((f) => f.next_actions))];
   const title = node.relation_name ? `${node.node_type} on ${node.relation_name}` : node.node_type;
   const totalMs = node.total_time_ms ?? (node.actual_time_ms === null || node.loops === null ? null : node.actual_time_ms * node.loops);
 
+  const mongo = engine === "mongodb";
+  const work: [string, string][] = mongo
+    ? [
+        ...(node.docs_examined != null ? ([["Documents examined", formatRows(node.docs_examined)]] as [string, string][]) : []),
+        ...(node.keys_examined ? ([["Index keys examined", formatRows(node.keys_examined)]] as [string, string][]) : []),
+        ...(node.actual_rows !== null ? ([["Documents returned", formatRows(node.actual_rows)]] as [string, string][]) : []),
+      ]
+    : [
+        ["Estimated rows", formatRows(node.estimated_rows)],
+        ...(node.actual_rows !== null ? ([["Actual rows", formatRows(node.actual_rows)]] as [string, string][]) : []),
+      ];
   const facts: [string, string][] = [
-    ["Estimated rows", formatRows(node.estimated_rows)],
-    ...(node.actual_rows !== null ? ([["Actual rows", formatRows(node.actual_rows)]] as [string, string][]) : []),
+    ...work,
     ...(totalMs !== null ? ([["Time (all loops)", formatMs(totalMs)]] as [string, string][]) : []),
     ...(node.exclusive_time_ms !== null ? ([["Time in this step", formatMs(node.exclusive_time_ms)]] as [string, string][]) : []),
-    ...(node.loops !== null ? ([["Loops", String(node.loops)]] as [string, string][]) : []),
+    ...(node.loops !== null && !mongo ? ([["Loops", String(node.loops)]] as [string, string][]) : []),
     ...(node.filter_waste !== null ? ([["Rows discarded by filter", formatPercent(node.filter_waste)]] as [string, string][]) : []),
     ...(node.filter_condition ? ([["Filter", node.filter_condition]] as [string, string][]) : []),
     ...(node.index_condition ? ([["Index condition", node.index_condition]] as [string, string][]) : []),

@@ -2,12 +2,17 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import type { WorkloadDashboard as Dashboard } from "@/lib/types";
+import type { Engine, WorkloadDashboard as Dashboard } from "@/lib/types";
 import { Panels } from "./Panels";
 import { QueryTable } from "./QueryTable";
 import { RegressionList } from "./RegressionList";
 
 const BUTTON = "rounded-md border px-3 py-1.5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60";
+
+const ENGINES: { value: Engine; label: string }[] = [
+  { value: "postgres", label: "PostgreSQL" },
+  { value: "mongodb", label: "MongoDB" },
+];
 
 function when(iso: string) {
   return new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
@@ -23,12 +28,21 @@ export function WorkloadDashboard({ projectId }: { projectId: number }) {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [engine, setEngine] = useState<Engine>("postgres");
+  const mongo = engine === "mongodb";
 
-  const load = useCallback(() => api.getWorkload(projectId).then(setData), [projectId]);
+  const load = useCallback(() => api.getWorkload(projectId, undefined, undefined, engine).then(setData), [projectId, engine]);
 
   useEffect(() => {
     load().catch((e) => setError(messageOf(e)));
   }, [load]);
+
+  function chooseEngine(next: Engine) {
+    setEngine(next);
+    setData(null); // never show one database's ranking under the other's name
+    setError(null);
+    setNotice(null);
+  }
 
   async function run(action: () => Promise<unknown>, after?: string) {
     setBusy(true);
@@ -46,12 +60,12 @@ export function WorkloadDashboard({ projectId }: { projectId: number }) {
 
   const importNow = () =>
     run(async () => {
-      await api.importWorkload(projectId);
+      await api.importWorkload(projectId, engine);
       await load();
     });
   const demo = (mode: "baseline" | "regress") =>
     run(
-      () => api.runDemoWorkload(projectId, mode),
+      () => api.runDemoWorkload(projectId, mode, engine),
       "Demo traffic is running and takes about 30 seconds. Import again when it has finished.",
     );
 
@@ -64,10 +78,24 @@ export function WorkloadDashboard({ projectId }: { projectId: number }) {
           <p className="mt-1 max-w-[60ch] text-sm text-ink-2">
             Which queries cost the most database time, from the database&apos;s own statistics. Fix the top of the list first.
           </p>
+          <fieldset className="mt-3 flex flex-wrap gap-2">
+            <legend className="sr-only">Database</legend>
+            {ENGINES.map((option) => (
+              <label
+                key={option.value}
+                className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-sm ${
+                  engine === option.value ? "border-accent bg-accent-soft" : "border-line bg-surface"
+                }`}
+              >
+                <input type="radio" name="workload-engine" checked={engine === option.value} onChange={() => chooseEngine(option.value)} />
+                <span className="font-medium">{option.label}</span>
+              </label>
+            ))}
+          </fieldset>
         </div>
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={importNow} disabled={busy} className={`${BUTTON} border-accent bg-accent text-accent-ink`}>
-            {busy ? "Working…" : "Import statistics"}
+            {busy ? "Working…" : mongo ? "Import profiler data" : "Import statistics"}
           </button>
           <button type="button" onClick={() => demo("baseline")} disabled={busy} className={`${BUTTON} border-line bg-surface`}>
             Generate demo traffic
@@ -93,8 +121,9 @@ export function WorkloadDashboard({ projectId }: { projectId: number }) {
         <section className="rounded-md border border-line bg-surface p-5">
           <h2 className="text-lg font-semibold">No workload imported yet</h2>
           <p className="mt-1 max-w-[62ch] text-sm text-ink-2">
-            Import the database&apos;s pg_stat_statements statistics to rank its queries by the total time they cost. A fresh sample
-            database has no traffic of its own: generate demo traffic first, then import.
+            {mongo
+              ? "Import the MongoDB profiler's record (system.profile) to rank its query shapes by the total time they cost. A fresh sample database has no traffic of its own: generate demo traffic first, then import."
+              : "Import the database's pg_stat_statements statistics to rank its queries by the total time they cost. A fresh sample database has no traffic of its own: generate demo traffic first, then import."}
           </p>
         </section>
       )}
@@ -102,15 +131,15 @@ export function WorkloadDashboard({ projectId }: { projectId: number }) {
       {data && snapshot && (
         <>
           <p className="text-sm text-ink-2">
-            Snapshot taken {when(snapshot.taken_at)}: {snapshot.query_count} queries, {snapshot.skipped_count} skipped (not a single
-            SELECT, or the database&apos;s own bookkeeping).
+            Snapshot taken {when(snapshot.taken_at)}: {snapshot.query_count} queries, {snapshot.skipped_count} skipped (
+            {mongo ? "not a find or an aggregate, or the database's own commands" : "not a single SELECT, or the database's own bookkeeping"}).
             {data.compare_to && <> Compared with the snapshot of {when(data.compare_to.taken_at)}.</>}
           </p>
           <section aria-labelledby="ranked-h" className="grid gap-3">
             <h2 id="ranked-h" className="text-lg font-semibold">
               Ranked by total time
             </h2>
-            <QueryTable queries={data.queries} />
+            <QueryTable queries={data.queries} engine={engine} />
           </section>
           <section aria-labelledby="panels-h" className="grid gap-3">
             <h2 id="panels-h" className="text-lg font-semibold">

@@ -63,4 +63,16 @@ describe("QueryDetailView", () => {
     );
     expect(screen.getByText(/sample parameters/i)).toHaveTextContent("[4242]");
   });
+
+  it("opens a MongoDB query in MongoDB mode, from its sample or from the shape of its text", () => {
+    const spec = '{"find": "orders", "filter": {"customer_id": {"$param": 1}}}';
+    const sample = { query_id: "mongo_collscan_by_customer", title: "Orders of one customer", sql: spec, params: [77], engine: "mongodb" as const };
+    const { rerender } = render(<QueryDetailView detail={detail({ sample })} />);
+    expect(screen.getByRole("link", { name: /analyze this query/i })).toHaveAttribute(
+      "href",
+      `/analyses/new?sql=${encodeURIComponent(spec)}&params=${encodeURIComponent("[77]")}&engine=mongodb`,
+    );
+    rerender(<QueryDetailView detail={detail({ sample: null, sample_sql: '{"find": "orders", "filter": {"customer_id": 77}}' })} />);
+    expect(screen.getByRole("link", { name: /analyze this query/i }).getAttribute("href")).toMatch(/&engine=mongodb$/);
+  });
 });

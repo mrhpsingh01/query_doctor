@@ -32,6 +32,8 @@ interface Props {
 
 export function AnalysisResult({ analysis, onRefresh }: Props) {
   const { plan, findings } = analysis;
+  const engine = analysis.engine ?? plan?.engine ?? "postgres";
+  const mongo = engine === "mongodb";
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [approved, setApproved] = useState<Record<number, BenchmarkRun>>({});
   const [approveError, setApproveError] = useState<string | null>(null);
@@ -93,10 +95,12 @@ export function AnalysisResult({ analysis, onRefresh }: Props) {
       <section aria-label="Summary" className="grid gap-2">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <dl className="flex flex-wrap gap-x-8 gap-y-1 text-sm">
-            <div>
-              <dt className="text-ink-2">Planning time</dt>
-              <dd className="font-mono">{formatMs(plan.planning_time_ms)}</dd>
-            </div>
+            {!mongo && (
+              <div>
+                <dt className="text-ink-2">Planning time</dt>
+                <dd className="font-mono">{formatMs(plan.planning_time_ms)}</dd>
+              </div>
+            )}
             {plan.executed && (
               <div>
                 <dt className="text-ink-2">Execution time</dt>
@@ -125,8 +129,9 @@ export function AnalysisResult({ analysis, onRefresh }: Props) {
         ) : (
           !plan.executed && (
             <p className="text-sm text-ink-2">
-              These are the planner&apos;s estimates only, so there are no real timings. Run the analysis with “Execute
-              with analysis” to measure them.
+              {mongo
+                ? "This is the plan MongoDB chose, without running the query, so there are no real timings or document counts. Run the analysis with “Execute with analysis” to measure them."
+                : "These are the planner's estimates only, so there are no real timings. Run the analysis with “Execute with analysis” to measure them."}
             </p>
           )
         )}
@@ -142,7 +147,7 @@ export function AnalysisResult({ analysis, onRefresh }: Props) {
         </p>
         <div className={`grid gap-4 ${selected ? "lg:grid-cols-[minmax(0,1fr)_380px]" : ""}`}>
           <PlanGraph plan={plan} findings={findings} selectedId={selectedId} onSelect={setSelectedId} />
-          {selected && <NodeDetailPanel node={selected} findings={findings} onClose={() => setSelectedId(null)} />}
+          {selected && <NodeDetailPanel node={selected} findings={findings} onClose={() => setSelectedId(null)} engine={engine} />}
         </div>
       </section>
 
@@ -175,6 +180,7 @@ export function AnalysisResult({ analysis, onRefresh }: Props) {
         <CandidatesList
           candidates={analysis.candidates}
           analysisId={analysis.id}
+          engine={engine}
           onApprove={analysis.connection_id ? undefined : approve}
           busyCandidateId={[...latestRun.values()].find(isActive)?.candidate_id ?? null}
           renderExtra={(c) => {

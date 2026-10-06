@@ -11,6 +11,8 @@ export interface NodeVisual {
   share: number | null;
   isSlowest: boolean;
   findingCount: number;
+  /** "mongodb" shows documents examined instead of planner estimates. Absent means PostgreSQL. */
+  engine?: string;
 }
 export type PlanNodeData = NodeVisual & { node: PlanNode } & Record<string, unknown>;
 export type PlanFlowNode = Node<PlanNodeData, "plan">;
@@ -95,6 +97,7 @@ export function layoutPlan(root: PlanNode, findings: Finding[], plan: ParsedPlan
       share: timeShare(node, plan),
       isSlowest: node.node_id === slowest,
       findingCount: findings.filter((f) => f.node_ids.includes(node.node_id)).length,
+      engine: plan.engine ?? "postgres",
     },
   }));
   return { nodes, edges };

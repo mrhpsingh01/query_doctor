@@ -10,8 +10,11 @@ function when(iso: string) {
 
 function analyzeLink(detail: WorkloadQueryDetail): string {
   const sql = detail.sample?.sql ?? detail.sample_sql;
+  // A MongoDB query is JSON text; PostgreSQL never starts with a brace.
+  const engine = detail.sample?.engine ?? (sql.trimStart().startsWith("{") ? "mongodb" : "postgres");
   const base = `/analyses/new?sql=${encodeURIComponent(sql)}`;
-  return detail.sample ? `${base}&params=${encodeURIComponent(JSON.stringify(detail.sample.params))}` : base;
+  const withParams = detail.sample ? `${base}&params=${encodeURIComponent(JSON.stringify(detail.sample.params))}` : base;
+  return engine === "mongodb" ? `${withParams}&engine=mongodb` : withParams;
 }
 
 /** One query shape: its workload trend, every analysis of it, and any change of plan between analyses. */

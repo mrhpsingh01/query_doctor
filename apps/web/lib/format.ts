@@ -28,6 +28,11 @@ export function formatFactor(ratio: number): string {
   return `${trim(ratio, 1)}×`;
 }
 
+/** Like formatFactor, but compact for the large factors a collection scan produces: "25k×". */
+export function formatAmplification(ratio: number): string {
+  return ratio >= 1000 ? `${formatRows(ratio)}×` : formatFactor(ratio);
+}
+
 export function formatNumber(value: number): string {
   return value.toLocaleString("en-US", { maximumFractionDigits: 2 });
 }

@@ -6,15 +6,19 @@ import { useState, useSyncExternalStore } from "react";
 interface Props {
   value: string;
   onChange: (value: string) => void;
+  /** "json" for a MongoDB query. Default: SQL. */
+  language?: "sql" | "json";
 }
 
 const FIELD =
   "block w-full rounded-md border border-line bg-surface p-3 font-mono text-[13px] leading-relaxed text-ink";
 
-function PlainEditor({ value, onChange }: Props) {
+const LABEL = { sql: "SQL", json: "MongoDB query" } as const;
+
+function PlainEditor({ value, onChange, language = "sql" }: Props) {
   return (
     <textarea
-      aria-label="SQL"
+      aria-label={LABEL[language]}
       className={`${FIELD} min-h-[260px]`}
       spellCheck={false}
       value={value}
@@ -35,17 +39,17 @@ function subscribeDark(callback: () => void) {
 }
 const prefersDark = () => window.matchMedia(DARK_QUERY).matches;
 
-export function SqlEditor({ value, onChange }: Props) {
+export function SqlEditor({ value, onChange, language = "sql" }: Props) {
   const dark = useSyncExternalStore(subscribeDark, prefersDark, () => false);
   const [ready, setReady] = useState(false);
 
   return (
     <div className="relative min-h-[260px] overflow-hidden rounded-md border border-line bg-surface">
-      {!ready && <PlainEditor value={value} onChange={onChange} />}
+      {!ready && <PlainEditor value={value} onChange={onChange} language={language} />}
       <div className={ready ? "" : "pointer-events-none absolute inset-0 opacity-0"} aria-hidden={!ready}>
         <Monaco
           height="260px"
-          language="sql"
+          language={language}
           theme={dark ? "vs-dark" : "vs"}
           value={value}
           onMount={() => setReady(true)}
@@ -57,7 +61,7 @@ export function SqlEditor({ value, onChange }: Props) {
             scrollBeyondLastLine: false,
             automaticLayout: true,
             padding: { top: 12, bottom: 12 },
-            ariaLabel: "SQL",
+            ariaLabel: LABEL[language],
             tabSize: 2,
           }}
         />

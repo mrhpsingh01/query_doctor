@@ -15,6 +15,8 @@ interface Props {
   busy?: boolean;
   /** When supplied, the card offers thumbs up/down feedback on the idea. */
   analysisId?: number;
+  /** "mongodb" words the benchmark confirmation in MongoDB terms. Default: PostgreSQL. */
+  engine?: string;
 }
 
 function planChange(c: Candidate): string | null {
@@ -31,7 +33,7 @@ function planChange(c: Candidate): string | null {
   ).replace("-", "−")}).`;
 }
 
-export function CandidateCard({ candidate, onApprove, busy = false, analysisId }: Props) {
+export function CandidateCard({ candidate, onApprove, busy = false, analysisId, engine }: Props) {
   const [confirmed, setConfirmed] = useState(false);
   const confirmId = useId();
   const score = candidate.planner_score && candidate.comparison ? Math.round(candidate.planner_score * 100) : null;
@@ -81,8 +83,9 @@ export function CandidateCard({ candidate, onApprove, busy = false, analysisId }
           <label htmlFor={confirmId} className="flex items-start gap-2 text-sm">
             <input id={confirmId} type="checkbox" className="mt-1" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
             <span>
-              I understand this creates a real index in an isolated copy of the database, to time the query before and
-              after. The database being analyzed is never changed.
+              {engine === "mongodb"
+                ? "I understand this creates a real index in a temporary copy of the collections, to time the query before and after. The database being analyzed is never changed."
+                : "I understand this creates a real index in an isolated copy of the database, to time the query before and after. The database being analyzed is never changed."}
             </span>
           </label>
           <div>

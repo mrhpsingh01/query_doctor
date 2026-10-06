@@ -1,17 +1,18 @@
 import Link from "next/link";
 import { formatMs, formatNumber } from "@/lib/format";
-import type { WorkloadQuery } from "@/lib/types";
+import type { Engine, WorkloadQuery } from "@/lib/types";
 import { ShareBar } from "./ShareBar";
 
 const NUM = "px-3 py-2 text-right font-mono text-[13px] tabular-nums";
 const HEAD = "px-3 py-2 text-xs font-semibold text-ink-2";
 
-export function analyzeHref(sql: string): string {
-  return `/analyses/new?sql=${encodeURIComponent(sql)}`;
+export function analyzeHref(sql: string, engine: Engine = "postgres"): string {
+  const base = `/analyses/new?sql=${encodeURIComponent(sql)}`;
+  return engine === "postgres" ? base : `${base}&engine=${engine}`;
 }
 
 /** The workload ranked by total database time (mean x calls): the order to optimize in. */
-export function QueryTable({ queries }: { queries: WorkloadQuery[] }) {
+export function QueryTable({ queries, engine = "postgres" }: { queries: WorkloadQuery[]; engine?: Engine }) {
   if (queries.length === 0) return <p className="text-sm text-ink-2">No queries in this snapshot.</p>;
   return (
     <div className="overflow-x-auto rounded-md border border-line bg-surface">
@@ -33,7 +34,11 @@ export function QueryTable({ queries }: { queries: WorkloadQuery[] }) {
             <th
               scope="col"
               className={`${HEAD} text-right`}
-              title="Estimated as mean + 1.645 standard deviations. pg_stat_statements keeps no percentiles; a measured p95 comes only from a QueryDoctor benchmark."
+              title={
+                engine === "mongodb"
+                  ? "Estimated as mean + 1.645 standard deviations of the profiled calls. The profiler records whole milliseconds; a measured p95 comes only from a QueryDoctor benchmark."
+                  : "Estimated as mean + 1.645 standard deviations. pg_stat_statements keeps no percentiles; a measured p95 comes only from a QueryDoctor benchmark."
+              }
             >
               Estimated p95
             </th>
@@ -66,7 +71,7 @@ export function QueryTable({ queries }: { queries: WorkloadQuery[] }) {
                 <ShareBar share={q.share} />
               </td>
               <td className="px-3 py-2 text-right">
-                <Link href={analyzeHref(q.sample_sql)} className="text-sm font-medium text-accent hover:underline">
+                <Link href={analyzeHref(q.sample_sql, engine)} className="text-sm font-medium text-accent hover:underline">
                   Analyze
                 </Link>
               </td>

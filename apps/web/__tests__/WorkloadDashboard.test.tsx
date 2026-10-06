@@ -45,7 +45,7 @@ describe("WorkloadDashboard", () => {
     mocks.importWorkload.mockResolvedValue({ id: 2 });
     render(<WorkloadDashboard projectId={7} />);
     await user.click(await screen.findByRole("button", { name: /import statistics/i }));
-    expect(mocks.importWorkload).toHaveBeenCalledWith(7);
+    expect(mocks.importWorkload).toHaveBeenCalledWith(7, "postgres");
     expect(await screen.findByRole("table")).toBeInTheDocument();
     expect(mocks.getWorkload).toHaveBeenCalledTimes(2);
   });
@@ -66,7 +66,7 @@ describe("WorkloadDashboard", () => {
     mocks.runDemoWorkload.mockResolvedValue({ status: "queued", mode: "regress" });
     render(<WorkloadDashboard projectId={1} />);
     await user.click(await screen.findByRole("button", { name: /simulate a regression/i }));
-    expect(mocks.runDemoWorkload).toHaveBeenCalledWith(1, "regress");
+    expect(mocks.runDemoWorkload).toHaveBeenCalledWith(1, "regress", "postgres");
     expect(await screen.findByRole("status")).toHaveTextContent(/import again/i);
   });
 
@@ -75,5 +75,56 @@ describe("WorkloadDashboard", () => {
     render(<WorkloadDashboard projectId={1} />);
     const heading = await screen.findByRole("heading", { name: /^regressions$/i });
     expect(heading.closest("section")).toHaveTextContent("was 5 ms, now 25 ms (5× slower)");
+  });
+
+  describe("engine filter", () => {
+    const mongoSnapshot = () => ({ ...dashboard().snapshot!, engine: "mongodb", source: "profiler" });
+    const mongoDashboard = () =>
+      dashboard({
+        snapshot: mongoSnapshot(),
+        queries: dashboard().queries.map((q) => ({ ...q, normalized_sql: '{"find":"orders","filter":{"customer_id":"?"}}', sample_sql: '{"find": "orders", "filter": {"customer_id": 77}}' })),
+      });
+
+    it("shows PostgreSQL first and loads the dashboard of the chosen database", async () => {
+      const user = userEvent.setup();
+      mocks.getWorkload.mockResolvedValue(dashboard());
+      render(<WorkloadDashboard projectId={1} />);
+      expect(await screen.findByRole("table")).toBeInTheDocument();
+      expect(screen.getByRole("radio", { name: "PostgreSQL" })).toBeChecked();
+      expect(mocks.getWorkload).toHaveBeenLastCalledWith(1, undefined, undefined, "postgres");
+      mocks.getWorkload.mockResolvedValue(mongoDashboard());
+      await user.click(screen.getByRole("radio", { name: "MongoDB" }));
+      expect((await screen.findAllByRole("link", { name: /customer_id/ })).length).toBeGreaterThan(0);
+      expect(mocks.getWorkload).toHaveBeenLastCalledWith(1, undefined, undefined, "mongodb");
+      expect(screen.getByRole("radio", { name: "MongoDB" })).toBeChecked();
+    });
+
+    it("explains the profiler in the empty state and imports, and generates traffic, for MongoDB", async () => {
+      const user = userEvent.setup();
+      mocks.getWorkload.mockResolvedValue(empty());
+      mocks.importWorkload.mockResolvedValue({ id: 3 });
+      mocks.runDemoWorkload.mockResolvedValue({ status: "queued", mode: "baseline", engine: "mongodb" });
+      render(<WorkloadDashboard projectId={4} />);
+      await user.click(await screen.findByRole("radio", { name: "MongoDB" }));
+      expect(await screen.findByText(/no workload imported yet/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/profiler/i).length).toBeGreaterThan(0);
+      expect(screen.queryByText(/pg_stat_statements/i)).not.toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: /import profiler data/i }));
+      expect(mocks.importWorkload).toHaveBeenCalledWith(4, "mongodb");
+      await user.click(screen.getByRole("button", { name: /generate demo traffic/i }));
+      expect(mocks.runDemoWorkload).toHaveBeenCalledWith(4, "baseline", "mongodb");
+    });
+
+    it("opens the analysis page in MongoDB mode from a MongoDB workload row", async () => {
+      const user = userEvent.setup();
+      mocks.getWorkload.mockResolvedValue(dashboard());
+      render(<WorkloadDashboard projectId={1} />);
+      await screen.findByRole("table");
+      mocks.getWorkload.mockResolvedValue(mongoDashboard());
+      await user.click(screen.getByRole("radio", { name: "MongoDB" }));
+      const links = await screen.findAllByRole("link", { name: /analyze/i });
+      expect(links[0].getAttribute("href")).toContain("engine=mongodb");
+      expect(links[0].getAttribute("href")).toContain(encodeURIComponent('{"find": "orders", "filter": {"customer_id": 77}}'));
+    });
   });
 });

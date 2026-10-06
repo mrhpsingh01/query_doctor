@@ -1,13 +1,32 @@
-import { formatMs, formatRows } from "@/lib/format";
+import { formatAmplification, formatMs, formatRows } from "@/lib/format";
 import type { NodeVisual } from "@/lib/planGraph";
 import { HEAT_STYLE } from "@/lib/severity";
 import type { PlanNode } from "@/lib/types";
+
+/** What a MongoDB stage read against what it returned: documents (or index keys) examined per result is the cost. */
+function MongoWork({ node }: { node: PlanNode }) {
+  const unit = node.docs_examined != null ? "docs" : "keys";
+  const examined = node.docs_examined ?? node.keys_examined ?? null;
+  const returned = node.actual_rows;
+  if (examined === null || returned === null) return null;
+  const amplification = returned > 0 && examined > returned ? examined / returned : null;
+  return (
+    <div className="flex flex-wrap gap-x-2">
+      <span>
+        examined {formatRows(examined)} {unit}
+      </span>
+      <span>returned {formatRows(returned)}</span>
+      {amplification !== null && amplification >= 2 && <span className="text-ink">{formatAmplification(amplification)} per result</span>}
+    </div>
+  );
+}
 
 /**
  * The face of one operator in the plan graph. The thin bar at the bottom is the memorable part: how much of the
  * whole query's time this operator spent itself, so the bottleneck is visible before anything is read.
  */
 export function PlanNodeBody({ node, data }: { node: PlanNode; data: NodeVisual }) {
+  const mongo = data.engine === "mongodb";
   const heat = HEAT_STYLE[data.severity];
   const target = node.relation_name ?? node.index_name;
   // Elapsed time across loops, corrected for parallel workers by the API (falls back to per-loop x loops).
@@ -37,10 +56,14 @@ export function PlanNodeBody({ node, data }: { node: PlanNode; data: NodeVisual 
       </div>
 
       <div className="grid gap-0.5 px-2.5 pb-2 pt-1.5 font-mono text-[11px] text-ink-2">
-        <div className="flex flex-wrap gap-x-2">
-          <span>est {formatRows(node.estimated_rows)}</span>
-          {node.actual_rows !== null && <span>actual {formatRows(node.actual_rows)}</span>}
-        </div>
+        {mongo ? (
+          <MongoWork node={node} />
+        ) : (
+          <div className="flex flex-wrap gap-x-2">
+            <span>est {formatRows(node.estimated_rows)}</span>
+            {node.actual_rows !== null && <span>actual {formatRows(node.actual_rows)}</span>}
+          </div>
+        )}
         <div className="flex flex-wrap gap-x-2">
           {totalMs !== null && <span className="text-ink">{formatMs(totalMs)}</span>}
           {node.loops !== null && node.loops !== 1 && <span>×{node.loops}</span>}

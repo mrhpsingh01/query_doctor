@@ -19,6 +19,16 @@ describe("api client", () => {
     expect(JSON.parse(init.body)).toEqual({ sql: "SELECT 1", params: [], execute: false, project_id: 1 });
   });
 
+  it("sends the engine with an analysis and asks for the samples of one engine", async () => {
+    const fetchFn = mockFetch(202, { id: 6, status: "queued" });
+    await api.createAnalysis({ sql: '{"find": "orders"}', params: [], execute: false, project_id: 1, engine: "mongodb" });
+    expect(JSON.parse(fetchFn.mock.calls[0][1].body)).toEqual({ sql: '{"find": "orders"}', params: [], execute: false, project_id: 1, engine: "mongodb" });
+    await api.listSamples();
+    expect(fetchFn.mock.calls[1][0]).toBe("/api/sample-queries");
+    await api.listSamples("mongodb");
+    expect(fetchFn.mock.calls[2][0]).toBe("/api/sample-queries?engine=mongodb");
+  });
+
   it("turns the API's structured 422 into an ApiError with code and message", async () => {
     mockFetch(422, { detail: { code: "not_select", message: "only SELECT statements are supported" } });
     const error = await api.getAnalysis(1).catch((e) => e);
@@ -61,6 +71,20 @@ describe("api client", () => {
     expect(JSON.parse(fetchFn.mock.calls[4][1].body)).toEqual({ mode: "regress" });
     await api.listFingerprints(1);
     expect(fetchFn.mock.calls[5][0]).toBe("/api/projects/1/fingerprints");
+  });
+
+  it("scopes the workload endpoints to an engine without changing the PostgreSQL URLs", async () => {
+    const fetchFn = mockFetch(201, { id: 3 });
+    await api.importWorkload(1, "mongodb");
+    expect(fetchFn.mock.calls[0][0]).toBe("/api/projects/1/workload/import?engine=mongodb");
+    await api.getWorkload(1, undefined, undefined, "mongodb");
+    expect(fetchFn.mock.calls[1][0]).toBe("/api/projects/1/workload?engine=mongodb");
+    await api.getWorkload(1, 4, 3, "mongodb");
+    expect(fetchFn.mock.calls[2][0]).toBe("/api/projects/1/workload?snapshot=4&compare=3&engine=mongodb");
+    await api.runDemoWorkload(1, "baseline", "mongodb");
+    expect(JSON.parse(fetchFn.mock.calls[3][1].body)).toEqual({ mode: "baseline", engine: "mongodb" });
+    await api.importWorkload(1, "postgres");
+    expect(fetchFn.mock.calls[4][0]).toBe("/api/projects/1/workload/import");
   });
 
   it("builds report download URLs", () => {

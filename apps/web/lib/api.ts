@@ -2,6 +2,7 @@ import type {
   Analysis,
   AnalysisSummary,
   DbConnection,
+  Engine,
   PrivacyInfo,
   Explanation,
   ExplanationKind,
@@ -55,6 +56,7 @@ export interface CreateAnalysisInput {
   execute: boolean;
   project_id: number;
   connection_id?: number | null;
+  engine?: Engine;
 }
 
 export interface CreateConnectionInput {
@@ -69,7 +71,7 @@ export interface CreateConnectionInput {
 
 export const api = {
   listProjects: () => request<Project[]>("/projects"),
-  listSamples: () => request<SampleQuery[]>("/sample-queries"),
+  listSamples: (engine?: Engine) => request<SampleQuery[]>(engine && engine !== "postgres" ? `/sample-queries?engine=${engine}` : "/sample-queries"),
   createAnalysis: (input: CreateAnalysisInput) =>
     request<{ id: number; status: string }>("/analyses", { method: "POST", body: JSON.stringify(input) }),
   getAnalysis: (id: number) => request<Analysis>(`/analyses/${id}`),
@@ -81,21 +83,22 @@ export const api = {
       body: JSON.stringify({ runs }),
     }),
   cancelBenchmark: (runId: number) => request<{ id: number; status: string }>(`/benchmarks/${runId}/cancel`, { method: "POST" }),
-  importWorkload: (projectId: number) =>
-    request<WorkloadSnapshot>(`/projects/${projectId}/workload/import`, { method: "POST" }),
-  getWorkload: (projectId: number, snapshotId?: number, compareId?: number) => {
+  importWorkload: (projectId: number, engine: Engine = "postgres") =>
+    request<WorkloadSnapshot>(`/projects/${projectId}/workload/import${engine === "postgres" ? "" : `?engine=${engine}`}`, { method: "POST" }),
+  getWorkload: (projectId: number, snapshotId?: number, compareId?: number, engine: Engine = "postgres") => {
     const query = new URLSearchParams();
     if (snapshotId !== undefined) query.set("snapshot", String(snapshotId));
     if (compareId !== undefined) query.set("compare", String(compareId));
+    if (engine !== "postgres") query.set("engine", engine);
     const suffix = query.size ? `?${query}` : "";
     return request<WorkloadDashboard>(`/projects/${projectId}/workload${suffix}`);
   },
   getWorkloadQuery: (projectId: number, fingerprint: string) =>
     request<WorkloadQueryDetail>(`/projects/${projectId}/workload/queries/${encodeURIComponent(fingerprint)}`),
-  runDemoWorkload: (projectId: number, mode: "baseline" | "regress") =>
+  runDemoWorkload: (projectId: number, mode: "baseline" | "regress", engine: Engine = "postgres") =>
     request<{ status: string; mode: string }>(`/projects/${projectId}/workload/demo`, {
       method: "POST",
-      body: JSON.stringify({ mode }),
+      body: JSON.stringify(engine === "postgres" ? { mode } : { mode, engine }),
     }),
   listFingerprints: (projectId: number) => request<FingerprintHistory[]>(`/projects/${projectId}/fingerprints`),
   listConnections: (projectId: number) => request<DbConnection[]>(`/projects/${projectId}/connections`),

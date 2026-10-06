@@ -6,7 +6,7 @@ import { AnalysisList } from "@/components/AnalysisList";
 import { QueryEditor, type QuerySubmission } from "@/components/query-editor/QueryEditor";
 import { ConnectionSelect } from "@/components/settings/ConnectionSelect";
 import { ApiError, api } from "@/lib/api";
-import type { AnalysisSummary, DbConnection, SampleQuery } from "@/lib/types";
+import type { AnalysisSummary, DbConnection, Engine, SampleQuery } from "@/lib/types";
 import { useDefaultProject } from "@/lib/useDefaultProject";
 
 function NewAnalysis() {
@@ -15,16 +15,21 @@ function NewAnalysis() {
   const sampleId = search.get("sample");
   const linkedSql = search.get("sql") ?? undefined; // from the workload page
   const linkedParams = search.get("params") ?? undefined;
+  const linkedEngine: Engine = search.get("engine") === "mongodb" ? "mongodb" : "postgres";
   const { project, error: projectError } = useDefaultProject();
   const [samples, setSamples] = useState<SampleQuery[] | null>(null);
   const [history, setHistory] = useState<AnalysisSummary[]>([]);
   const [connections, setConnections] = useState<DbConnection[]>([]);
   const [connectionId, setConnectionId] = useState<number | null>(null);
+  const [engine, setEngine] = useState<Engine | null>(null); // null until the editor reports a choice: the linked one applies
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // A linked MongoDB sample opens MongoDB even without ?engine=.
+  const startEngine: Engine = samples?.find((x) => x.id === sampleId)?.engine ?? linkedEngine;
 
   useEffect(() => {
-    api.listSamples().then(setSamples).catch(() => setSamples([]));
+    // Both engines' samples; a failure to load one list still leaves the other usable.
+    Promise.all([api.listSamples().catch(() => []), api.listSamples("mongodb").catch(() => [])]).then(([pg, mongo]) => setSamples([...pg, ...mongo]));
   }, []);
   useEffect(() => {
     if (!project) return;
@@ -37,7 +42,8 @@ function NewAnalysis() {
     setBusy(true);
     setError(null);
     try {
-      const { id } = await api.createAnalysis({ ...input, project_id: project.id, connection_id: connectionId });
+      // Custom connections are PostgreSQL only: a MongoDB analysis always uses the sample database.
+      const { id } = await api.createAnalysis({ ...input, project_id: project.id, connection_id: input.engine === "mongodb" ? null : connectionId });
       router.push(`/analyses/${id}`);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Something went wrong while starting the analysis. Try again.");
@@ -48,17 +54,19 @@ function NewAnalysis() {
   return (
     <div className="grid gap-8">
       <h1 className="text-2xl font-semibold tracking-tight">New analysis</h1>
-      <ConnectionSelect connections={connections} value={connectionId} onChange={setConnectionId} />
+      {(engine ?? startEngine) === "postgres" && <ConnectionSelect connections={connections} value={connectionId} onChange={setConnectionId} />}
       {samples === null ? (
         <p className="text-sm text-ink-2">Loading…</p>
       ) : (
         <QueryEditor
-          key={sampleId ?? linkedSql ?? "blank"}
+          key={sampleId ?? linkedSql ?? startEngine}
           samples={samples}
           onSubmit={submit}
           busy={busy}
           error={error ?? projectError}
           initialSampleId={sampleId}
+          initialEngine={startEngine}
+          onEngineChange={setEngine}
           initialSql={linkedSql}
           initialParams={linkedParams}
         />
