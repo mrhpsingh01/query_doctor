@@ -1,0 +1,104 @@
+@import "tailwindcss";
+
+/* Design tokens. The plan viewer's severity scale is a heat ramp: green (cheap) -> yellow -> orange -> red (bottleneck). */
+:root {
+  --bg: #f2f4f3;
+  --surface: #ffffff;
+  --surface-2: #e8edec;
+  --ink: #14202a;
+  --ink-2: #4f5f6b;
+  --line: #d6ddda;
+  --accent: #0b6e8a;
+  --accent-ink: #ffffff;
+  --accent-soft: #dcecf1;
+  --heat-0: #2f8f6b;
+  --heat-1: #b8921a;
+  --heat-2: #d2601f;
+  --heat-3: #c2352e;
+  --heat-0-soft: #e0f0e9;
+  --heat-1-soft: #f5edd2;
+  --heat-2-soft: #f9e4d7;
+  --heat-3-soft: #f7dedc;
+  --focus: #0b6e8a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e161b;
+    --surface: #15212a;
+    --surface-2: #1d2c36;
+    --ink: #e6eef1;
+    --ink-2: #9db0ba;
+    --line: #273843;
+    --accent: #4fb6d2;
+    --accent-ink: #06222b;
+    --accent-soft: #14323d;
+    --heat-0: #4cc296;
+    --heat-1: #e0b93a;
+    --heat-2: #f08a4b;
+    --heat-3: #ef6b63;
+    --heat-0-soft: #143328;
+    --heat-1-soft: #382f12;
+    --heat-2-soft: #3b2415;
+    --heat-3-soft: #3d1c1a;
+    --focus: #4fb6d2;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-heat-0: var(--heat-0);
+  --color-heat-1: var(--heat-1);
+  --color-heat-2: var(--heat-2);
+  --color-heat-3: var(--heat-3);
+  --color-heat-0-soft: var(--heat-0-soft);
+  --color-heat-1-soft: var(--heat-1-soft);
+  --color-heat-2-soft: var(--heat-2-soft);
+  --color-heat-3-soft: var(--heat-3-soft);
+  --font-sans: var(--font-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-code), ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+html {
+  background: var(--bg);
+  color: var(--ink);
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* React Flow chrome follows the theme */
+.react-flow {
+  --xy-background-color: transparent;
+  --xy-edge-stroke: var(--ink-2);
+  --xy-controls-button-background-color: var(--surface);
+  --xy-controls-button-color: var(--ink);
+  --xy-controls-button-border-color: var(--line);
+}
