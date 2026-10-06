@@ -46,6 +46,23 @@ describe("api client", () => {
     expect(fetchFn.mock.calls[1][0]).toBe("/api/benchmarks/9/cancel");
   });
 
+  it("talks to the workload endpoints", async () => {
+    const fetchFn = mockFetch(201, { id: 3 });
+    await api.importWorkload(1);
+    expect(fetchFn.mock.calls[0][0]).toBe("/api/projects/1/workload/import");
+    expect(fetchFn.mock.calls[0][1].method).toBe("POST");
+    await api.getWorkload(1);
+    expect(fetchFn.mock.calls[1][0]).toBe("/api/projects/1/workload");
+    await api.getWorkload(1, 4, 3);
+    expect(fetchFn.mock.calls[2][0]).toBe("/api/projects/1/workload?snapshot=4&compare=3");
+    await api.getWorkloadQuery(1, "abc");
+    expect(fetchFn.mock.calls[3][0]).toBe("/api/projects/1/workload/queries/abc");
+    await api.runDemoWorkload(1, "regress");
+    expect(JSON.parse(fetchFn.mock.calls[4][1].body)).toEqual({ mode: "regress" });
+    await api.listFingerprints(1);
+    expect(fetchFn.mock.calls[5][0]).toBe("/api/projects/1/fingerprints");
+  });
+
   it("builds report download URLs", () => {
     expect(api.reportUrl(4, "md")).toBe("/api/analyses/4/report?format=md");
     expect(api.reportUrl(4, "html")).toBe("/api/analyses/4/report?format=html");

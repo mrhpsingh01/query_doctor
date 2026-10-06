@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatMs, formatPercent, formatRows } from "@/lib/format";
+import { formatFactor, formatMs, formatPercent, formatRows } from "@/lib/format";
 
 describe("format helpers", () => {
   it("formats durations at a readable precision", () => {
@@ -14,6 +14,12 @@ describe("format helpers", () => {
     expect(formatRows(10842)).toBe("10.8k");
     expect(formatRows(1824403)).toBe("1.82M");
     expect(formatRows(null)).toBe("n/a");
+  });
+
+  it("formats a multiplier with one decimal and no trailing zero", () => {
+    expect(formatFactor(5)).toBe("5×");
+    expect(formatFactor(1.84)).toBe("1.8×");
+    expect(formatFactor(12.04)).toBe("12×");
   });
 
   it("formats ratios as percentages", () => {

@@ -23,6 +23,11 @@ export function formatPercent(ratio: number | null | undefined): string {
   return `${trim(ratio * 100, 1)}%`;
 }
 
+/** "5×", "1.8×": how many times larger a value is than its reference. */
+export function formatFactor(ratio: number): string {
+  return `${trim(ratio, 1)}×`;
+}
+
 export function formatNumber(value: number): string {
   return value.toLocaleString("en-US", { maximumFractionDigits: 2 });
 }

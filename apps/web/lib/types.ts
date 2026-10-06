@@ -187,3 +187,101 @@ export interface ProgressEvent {
   type: string;
   message?: string | null;
 }
+
+// Workload intelligence (apps/api/app/api/workload.py).
+export interface WorkloadSnapshot {
+  id: number;
+  project_id: number;
+  engine: string;
+  source: string;
+  taken_at: string;
+  query_count: number;
+  skipped_count: number;
+}
+
+export interface WorkloadQuery {
+  fingerprint: string;
+  normalized_sql: string;
+  sample_sql: string;
+  calls: number;
+  total_ms: number;
+  mean_ms: number;
+  stddev_ms: number;
+  min_ms: number;
+  max_ms: number;
+  rows: number;
+  shared_hit_blocks: number;
+  shared_read_blocks: number;
+  temp_blocks: number;
+  /** An ESTIMATE (mean + 1.645 standard deviations): pg_stat_statements keeps no percentiles. */
+  p95_est_ms: number;
+  tables: string[];
+  rank: number;
+  /** This query's share (0..1) of the snapshot's total execution time. */
+  share: number;
+}
+
+export interface Regression {
+  fingerprint: string;
+  baseline_mean_ms: number;
+  recent_mean_ms: number;
+  ratio: number;
+  recent_calls: number;
+}
+
+export interface WorkloadPanels {
+  highest_total_time: WorkloadQuery[];
+  slowest_p95: WorkloadQuery[];
+  most_frequent: WorkloadQuery[];
+  highest_io: WorkloadQuery[];
+  most_unstable: WorkloadQuery[];
+  largest_regression: Regression[];
+  missing_validation: WorkloadQuery[];
+}
+
+export interface WorkloadDashboard {
+  snapshot: WorkloadSnapshot | null;
+  compare_to: WorkloadSnapshot | null;
+  queries: WorkloadQuery[];
+  panels: WorkloadPanels;
+  regressions: Regression[];
+}
+
+export interface FingerprintHistory {
+  fingerprint: string;
+  normalized_sql: string;
+  first_seen: string;
+  last_seen: string;
+  analysis_count: number;
+  executed_count: number;
+  mean_execution_ms: number | null;
+  /** Measured over executed analyses (unlike the workload's estimated p95). */
+  p95_execution_ms: number | null;
+  plan_change_count: number;
+  best_validation: Validation | null;
+}
+
+export interface PlanChange {
+  before_analysis_id: number;
+  after_analysis_id: number;
+  before_fingerprint: string;
+  after_fingerprint: string;
+  before_operators: string[];
+  after_operators: string[];
+}
+
+export interface WorkloadQueryDetail {
+  fingerprint: string;
+  normalized_sql: string;
+  sample_sql: string;
+  trend: { snapshot_id: number; taken_at: string; calls: number; total_ms: number; mean_ms: number; p95_est_ms: number }[];
+  analyses: {
+    id: number;
+    created_at: string;
+    plan_fingerprint: string | null;
+    execution_time_ms: number | null;
+    validation: Validation | null;
+  }[];
+  plan_changes: PlanChange[];
+  sample: { query_id: string; title: string; sql: string; params: unknown[] } | null;
+}

@@ -78,6 +78,15 @@ describe("QueryEditor", () => {
     expect(within(screen.getByRole("alert")).getByText(/json array/i)).toBeInTheDocument();
   });
 
+  it("opens with the given SQL and parameters (a link from the workload page)", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    render(<QueryEditor samples={samples} onSubmit={onSubmit} initialSql="SELECT 1 WHERE $1 = 1" initialParams="[1]" />);
+    expect(screen.getByLabelText("SQL")).toHaveValue("SELECT 1 WHERE $1 = 1");
+    await user.click(screen.getByRole("button", { name: /analyze query/i }));
+    expect(onSubmit).toHaveBeenCalledWith({ sql: "SELECT 1 WHERE $1 = 1", params: [1], execute: false });
+  });
+
   it("disables submission while empty or busy and shows a server error", async () => {
     const { rerender } = render(<QueryEditor samples={samples} onSubmit={vi.fn()} />);
     expect(screen.getByRole("button", { name: /analyze query/i })).toBeDisabled();

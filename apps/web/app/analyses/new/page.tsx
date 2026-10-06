@@ -10,7 +10,10 @@ import { useDefaultProject } from "@/lib/useDefaultProject";
 
 function NewAnalysis() {
   const router = useRouter();
-  const sampleId = useSearchParams().get("sample");
+  const search = useSearchParams();
+  const sampleId = search.get("sample");
+  const linkedSql = search.get("sql") ?? undefined; // from the workload page
+  const linkedParams = search.get("params") ?? undefined;
   const { project, error: projectError } = useDefaultProject();
   const [samples, setSamples] = useState<SampleQuery[] | null>(null);
   const [history, setHistory] = useState<AnalysisSummary[]>([]);
@@ -44,12 +47,14 @@ function NewAnalysis() {
         <p className="text-sm text-ink-2">Loading…</p>
       ) : (
         <QueryEditor
-          key={sampleId ?? "blank"}
+          key={sampleId ?? linkedSql ?? "blank"}
           samples={samples}
           onSubmit={submit}
           busy={busy}
           error={error ?? projectError}
           initialSampleId={sampleId}
+          initialSql={linkedSql}
+          initialParams={linkedParams}
         />
       )}
       <section aria-labelledby="history-h">

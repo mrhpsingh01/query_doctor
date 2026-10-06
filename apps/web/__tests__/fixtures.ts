@@ -1,4 +1,4 @@
-import type { Finding, ParsedPlan, PlanNode } from "@/lib/types";
+import type { Finding, ParsedPlan, PlanNode, Regression, WorkloadDashboard, WorkloadQuery } from "@/lib/types";
 
 export function node(overrides: Partial<PlanNode> = {}): PlanNode {
   return {
@@ -154,6 +154,36 @@ export function benchmarkRun(overrides: Partial<import("@/lib/types").BenchmarkR
     created_at: "2026-01-01T00:00:00Z",
     started_at: null,
     finished_at: null,
+    ...overrides,
+  };
+}
+
+export function workloadQuery(overrides: Partial<WorkloadQuery> = {}): WorkloadQuery {
+  return {
+    fingerprint: "8ca0e74b3bc8a91d",
+    normalized_sql: "SELECT id, total_amount FROM orders WHERE customer_id = ? AND created_at >= ?",
+    sample_sql: "SELECT id, total_amount FROM orders WHERE customer_id = $1 AND created_at >= $2",
+    calls: 1500, total_ms: 9000, mean_ms: 6, stddev_ms: 2, min_ms: 3, max_ms: 20, rows: 30000,
+    shared_hit_blocks: 5000, shared_read_blocks: 0, temp_blocks: 0, p95_est_ms: 9.29, tables: ["orders"], rank: 1, share: 0.72,
+    ...overrides,
+  };
+}
+
+export function regression(overrides: Partial<Regression> = {}): Regression {
+  return { fingerprint: "8ca0e74b3bc8a91d", baseline_mean_ms: 5, recent_mean_ms: 25, ratio: 5, recent_calls: 60, ...overrides };
+}
+
+export function dashboard(overrides: Partial<WorkloadDashboard> = {}): WorkloadDashboard {
+  const queries = [workloadQuery(), workloadQuery({ fingerprint: "ffffffffffffffff", normalized_sql: "SELECT * FROM events ORDER BY payload", sample_sql: "SELECT * FROM events WHERE event_type = $1 ORDER BY payload", calls: 20, total_ms: 3500, mean_ms: 175, p95_est_ms: 400, rank: 2, share: 0.28 })];
+  return {
+    snapshot: { id: 2, project_id: 1, engine: "postgres", source: "pg_stat_statements", taken_at: "2026-01-01T10:00:00Z", query_count: 2, skipped_count: 4 },
+    compare_to: null,
+    queries,
+    panels: {
+      highest_total_time: queries, slowest_p95: [queries[1], queries[0]], most_frequent: queries, highest_io: [], most_unstable: [],
+      largest_regression: [], missing_validation: queries,
+    },
+    regressions: [],
     ...overrides,
   };
 }

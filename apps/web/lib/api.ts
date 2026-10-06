@@ -1,4 +1,13 @@
-import type { Analysis, AnalysisSummary, Project, SampleQuery } from "./types";
+import type {
+  Analysis,
+  AnalysisSummary,
+  FingerprintHistory,
+  Project,
+  SampleQuery,
+  WorkloadDashboard,
+  WorkloadQueryDetail,
+  WorkloadSnapshot,
+} from "./types";
 
 /** Error carrying the API's machine-readable code (e.g. "not_select") and a message fit to show a person. */
 export class ApiError extends Error {
@@ -55,6 +64,23 @@ export const api = {
       body: JSON.stringify({ runs }),
     }),
   cancelBenchmark: (runId: number) => request<{ id: number; status: string }>(`/benchmarks/${runId}/cancel`, { method: "POST" }),
+  importWorkload: (projectId: number) =>
+    request<WorkloadSnapshot>(`/projects/${projectId}/workload/import`, { method: "POST" }),
+  getWorkload: (projectId: number, snapshotId?: number, compareId?: number) => {
+    const query = new URLSearchParams();
+    if (snapshotId !== undefined) query.set("snapshot", String(snapshotId));
+    if (compareId !== undefined) query.set("compare", String(compareId));
+    const suffix = query.size ? `?${query}` : "";
+    return request<WorkloadDashboard>(`/projects/${projectId}/workload${suffix}`);
+  },
+  getWorkloadQuery: (projectId: number, fingerprint: string) =>
+    request<WorkloadQueryDetail>(`/projects/${projectId}/workload/queries/${encodeURIComponent(fingerprint)}`),
+  runDemoWorkload: (projectId: number, mode: "baseline" | "regress") =>
+    request<{ status: string; mode: string }>(`/projects/${projectId}/workload/demo`, {
+      method: "POST",
+      body: JSON.stringify({ mode }),
+    }),
+  listFingerprints: (projectId: number) => request<FingerprintHistory[]>(`/projects/${projectId}/fingerprints`),
   /** Where a finished analysis's report can be downloaded (a plain link, not a fetch). */
   reportUrl: (analysisId: number, format: "md" | "html") => `/api/analyses/${analysisId}/report?format=${format}`,
 };

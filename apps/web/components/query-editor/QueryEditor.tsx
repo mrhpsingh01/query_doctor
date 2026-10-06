@@ -19,15 +19,17 @@ interface Props {
   /** An error from the server for the last submission. */
   error?: string | null;
   initialSql?: string;
+  /** The parameters field's text (a JSON array) when opening with SQL that is not a catalog sample. */
+  initialParams?: string;
   initialSampleId?: string | null;
 }
 
 const FIELD = "block w-full rounded-md border border-line bg-surface px-3 py-2 font-mono text-[13px] text-ink";
 
-export function QueryEditor({ samples, onSubmit, busy = false, error = null, initialSql = "", initialSampleId }: Props) {
+export function QueryEditor({ samples, onSubmit, busy = false, error = null, initialSql = "", initialParams = "[]", initialSampleId }: Props) {
   const initialSample = samples.find((s) => s.id === initialSampleId);
   const [sql, setSql] = useState(initialSample?.sql ?? initialSql);
-  const [paramsText, setParamsText] = useState(initialSample ? JSON.stringify(initialSample.params) : "[]");
+  const [paramsText, setParamsText] = useState(initialSample ? JSON.stringify(initialSample.params) : initialParams);
   const [execute, setExecute] = useState(false);
   const [paramsError, setParamsError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(initialSample?.id ?? null);
