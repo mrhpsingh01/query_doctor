@@ -16,6 +16,7 @@ from querydoctor.lab.generator import light_customer, top_customers
 
 class SampleQuery(BaseModel):
     id: str
+    engine: str = "postgres"  # postgres | mongodb (for MongoDB, `sql` holds the JSON query spec)
     title: str
     sql: str
     params: list = Field(default_factory=list)

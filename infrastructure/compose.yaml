@@ -110,11 +110,14 @@ services:
         --workload-dsn postgresql://qd_readonly:qd_readonly@target-postgres:5432/querydoctor_sample
         --dsn postgresql://querydoctor:querydoctor@target-postgres:5432/querydoctor_sample &&
         python -m querydoctor.lab.seed --if-empty --scale $${QD_SCALE}
-        --dsn postgresql://qd_bench:qd_bench@bench-postgres:5432/querydoctor_sample
+        --dsn postgresql://qd_bench:qd_bench@bench-postgres:5432/querydoctor_sample &&
+        python -m querydoctor.lab.mongo_seed --if-empty --scale $${QD_SCALE}
+        --uri 'mongodb://querydoctor:querydoctor@mongo:27017/?authSource=admin'
     environment: *api-env
     depends_on:
       target-postgres: {condition: service_healthy}
       bench-postgres: {condition: service_healthy}
+      mongo: {condition: service_healthy}
     restart: "no"
 
   api:
