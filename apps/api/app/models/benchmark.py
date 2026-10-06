@@ -3,14 +3,20 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import JSON, DateTime, ForeignKey, String, Text
+from sqlalchemy import JSON, DateTime, ForeignKey, Index, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, CreatedMixin
 
+_ACTIVE = "status IN ('queued', 'running')"
+
 
 class BenchmarkRun(CreatedMixin, Base):
     __tablename__ = "benchmark_runs"
+    __table_args__ = (
+        # At most one queued/running benchmark per candidate: makes double approval safe even across racing requests.
+        Index("uq_benchmark_active_per_candidate", "candidate_id", unique=True, postgresql_where=text(_ACTIVE), sqlite_where=text(_ACTIVE)),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     analysis_id: Mapped[int] = mapped_column(ForeignKey("analyses.id", ondelete="CASCADE"), index=True)

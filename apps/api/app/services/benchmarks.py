@@ -1,0 +1,95 @@
+"""The benchmark job: run an approved candidate through the sandbox benchmark and record the outcome.
+
+Every exit path leaves the run in a terminal state with a matching event. Only a completed, non-regressing run whose
+output matched awards ``benchmark_validated``; anything else leaves the candidate's evidence level untouched.
+"""
+
+from __future__ import annotations
+
+import logging
+from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import UTC, datetime
+
+from querydoctor.benchmark import BenchmarkConfig, is_blocking
+from querydoctor.benchmark.runner import BenchmarkCancelled, BenchmarkFailed, run_benchmark
+from sqlalchemy.orm import Session
+
+from app.models import Analysis, AuditEvent, BenchmarkRun, RecommendationCandidate
+from app.services.events import EventBus
+from app.services.pipeline import emit
+
+log = logging.getLogger(__name__)
+
+TERMINAL = {"completed", "failed", "cancelled"}
+STAGE_EVENTS = {"creating_sandbox", "warmup_before", "measuring_before", "creating_index", "analyzing",
+                "warmup_after", "measuring_after", "comparing", "teardown"}
+
+
+@dataclass
+class BenchmarkDeps:
+    bench_dsn: str
+    bus: EventBus
+    run: Callable = run_benchmark  # replaceable in tests
+
+
+def _key(run_id: int) -> str:
+    return f"benchmark:{run_id}"
+
+
+def _finish(session: Session, deps: BenchmarkDeps, run: BenchmarkRun, status: str, event: str, error: str | None = None) -> None:
+    run.status = status
+    run.error = error
+    run.finished_at = datetime.now(UTC)
+    session.commit()
+    emit(deps, _key(run.id), event, error)
+
+
+def run_benchmark_job(session: Session, run_id: int, deps: BenchmarkDeps) -> None:
+    run = session.get(BenchmarkRun, run_id)
+    if run is None or run.status != "queued":
+        return
+    candidate = session.get(RecommendationCandidate, run.candidate_id)
+    analysis = session.get(Analysis, run.analysis_id)
+    run.status, run.started_at = "running", datetime.now(UTC)
+    session.commit()
+    emit(deps, _key(run.id), "benchmarking")
+
+    def cancelled() -> bool:
+        session.refresh(run)
+        return run.status == "cancelled"
+
+    def progress(stage: str) -> None:
+        run.stage = stage
+        session.commit()
+        emit(deps, _key(run.id), stage)
+        if stage == "creating_index":
+            session.add(AuditEvent(analysis_id=analysis.id, event_type="sandbox_index_created",
+                                   detail={"run_id": run.id, "ddl": candidate.ddl}))
+            session.commit()
+
+    try:
+        result = deps.run(
+            deps.bench_dsn, analysis.snapshot.sql, analysis.snapshot.params, candidate.ddl,
+            BenchmarkConfig(**run.config), on_progress=progress, cancelled=cancelled,
+        )
+    except BenchmarkCancelled:
+        _finish(session, deps, run, "cancelled", "cancelled")
+        return
+    except BenchmarkFailed as exc:
+        _finish(session, deps, run, "failed", "failed", str(exc))
+        return
+    except Exception:
+        log.exception("benchmark %s crashed", run_id)
+        session.rollback()
+        _finish(session, deps, run, "failed", "failed", "The benchmark failed due to an internal error.")
+        return
+
+    if cancelled():
+        _finish(session, deps, run, "cancelled", "cancelled")
+        return
+    run.result = result.model_dump()
+    blocked = any(is_blocking(w) for w in result.warnings)
+    if result.improvement_pct > 0 and result.checksum_match and not blocked:
+        candidate.validation = "benchmark_validated"
+    _finish(session, deps, run, "completed", "benchmark_completed")

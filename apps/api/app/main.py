@@ -4,11 +4,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from sqlalchemy import select
 
-from app.api import analyses, connections, projects, samples
+from app.api import analyses, benchmarks, connections, projects, samples
 from app.config import Settings, get_settings
 from app.database import make_engine, make_sessionmaker
 from app.models import Base, Project
 from app.services.events import EventBus, get_event_bus
+from app.services.benchmarks import BenchmarkDeps, run_benchmark_job
 from app.services.pipeline import PipelineDeps, run_analysis_pipeline
 
 SAMPLE_PROJECT_NAME = "Sample shop"
@@ -27,6 +28,8 @@ def create_app(
     event_bus: EventBus | None = None,
     pipeline_deps: PipelineDeps | None = None,
     enqueue: Callable[[int], None] | None = None,
+    benchmark_deps: BenchmarkDeps | None = None,
+    enqueue_benchmark: Callable[[int], None] | None = None,
 ) -> FastAPI:
     """Build the API. ``event_bus`` / ``pipeline_deps`` / ``enqueue`` exist so tests can run everything in-process;
     in deployment the defaults hand analyses to the Celery worker over Redis."""
@@ -38,6 +41,8 @@ def create_app(
         max_plan_bytes=settings.max_plan_bytes,
         thresholds=settings.diagnosis_thresholds(),
     )
+
+    bench_deps = benchmark_deps or BenchmarkDeps(bench_dsn=settings.bench_dsn, bus=bus)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -53,6 +58,7 @@ def create_app(
     app.state.settings = settings
     app.state.bus = bus
     app.state.pipeline_deps = deps
+    app.state.benchmark_deps = bench_deps
 
     def run_inline(analysis_id: int) -> None:
         with app.state.sessionmaker() as session:
@@ -63,13 +69,26 @@ def create_app(
 
         run_analysis.delay(analysis_id)
 
-    app.state.enqueue = enqueue or (run_inline if settings.redis_url.startswith("memory://") else run_in_worker)
+    def run_benchmark_inline(run_id: int) -> None:
+        with app.state.sessionmaker() as session:
+            run_benchmark_job(session, run_id, bench_deps)
+
+    def run_benchmark_in_worker(run_id: int) -> None:
+        from app.workers.tasks import run_benchmark
+
+        run_benchmark.delay(run_id)
+
+    in_process = settings.redis_url.startswith("memory://")
+    app.state.enqueue = enqueue or (run_inline if in_process else run_in_worker)
+    app.state.enqueue_benchmark = enqueue_benchmark or (run_benchmark_inline if in_process else run_benchmark_in_worker)
 
     @app.get("/api/health")
     def health():
         return {"status": "ok"}
 
-    for router in (projects.router, analyses.router, analyses.project_router, samples.router, connections.router):
+    for router in (
+        projects.router, analyses.router, analyses.project_router, benchmarks.router, samples.router, connections.router
+    ):
         app.include_router(router)
     return app
 

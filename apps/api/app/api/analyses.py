@@ -1,17 +1,17 @@
 from __future__ import annotations
 
-import json
-import time
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response
+from querydoctor.benchmark import render_report, render_report_html
 from querydoctor.db import ParamMismatch
 from querydoctor.db.explain import check_params
 from querydoctor.safety import ValidationError, validate_query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.api.sse import sse_stream
 from app.deps import get_session
 from app.models import Analysis, AuditEvent, Project, QuerySnapshot
 from app.schemas.analysis import AnalysisAccepted, AnalysisCreate, AnalysisOut, AnalysisSummary
@@ -20,8 +20,6 @@ from app.services.pipeline import TERMINAL_STATUSES, emit
 router = APIRouter(prefix="/api/analyses", tags=["analyses"])
 project_router = APIRouter(prefix="/api/projects", tags=["projects"])
 
-SSE_KEEPALIVE_MS = 15_000
-SSE_MAX_SECONDS = 600
 
 
 def _422(code: str, message: str) -> HTTPException:
@@ -101,34 +99,35 @@ def stream_events(
     last_event_id: str | None = Header(default=None),
 ):
     _get_or_404(session, analysis_id)
-    bus = request.app.state.bus
     sessionmaker = request.app.state.sessionmaker
-    key = f"analysis:{analysis_id}"
 
     def terminal_status() -> str | None:
         with sessionmaker() as s:
             status = s.get(Analysis, analysis_id).status
             return status if status in TERMINAL_STATUSES else None
 
-    def generate():
-        after = last_event_id
-        deadline = time.monotonic() + SSE_MAX_SECONDS
-        while time.monotonic() < deadline:
-            batch = bus.read(key, after, block_ms=SSE_KEEPALIVE_MS)
-            if not batch:
-                final = terminal_status()
-                if final:  # events expired or were never published; close with the DB's truth
-                    yield f"event: progress\ndata: {json.dumps({'type': final})}\n\n"
-                    return
-                yield ": keepalive\n\n"
-                continue
-            for event_id, event in batch:
-                after = event_id
-                yield f"id: {event_id}\nevent: progress\ndata: {json.dumps(event)}\n\n"
-                if event.get("type") in TERMINAL_STATUSES:
-                    return
+    return sse_stream(request.app.state.bus, f"analysis:{analysis_id}", TERMINAL_STATUSES, last_event_id, terminal_status)
 
-    return StreamingResponse(generate(), media_type="text/event-stream", headers={"Cache-Control": "no-cache"})
+
+REPORT_TYPES = {
+    "md": ("text/markdown; charset=utf-8", render_report),
+    "html": ("text/html; charset=utf-8", render_report_html),
+}
+
+
+@router.get("/{analysis_id}/report")
+def export_report(analysis_id: int, format: str = "md", session: Session = Depends(get_session)):
+    if format not in REPORT_TYPES:
+        raise _422("unsupported_format", "format must be 'md' or 'html'")
+    analysis = _get_or_404(session, analysis_id)
+    media_type, renderer = REPORT_TYPES[format]
+    body = renderer(AnalysisOut.from_model(analysis).model_dump(mode="json"))
+    session.add(AuditEvent(analysis_id=analysis.id, event_type="report_exported", detail={"format": format}))
+    session.commit()
+    return Response(
+        body, media_type=media_type,
+        headers={"Content-Disposition": f'attachment; filename="querydoctor-analysis-{analysis.id}.{format}"'},
+    )
 
 
 @project_router.get("/{project_id}/analyses", response_model=list[AnalysisSummary])

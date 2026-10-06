@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from querydoctor.plan_parser import parse_explain
 
 from app.models import Analysis
+from app.schemas.benchmark import BenchmarkOut
 
 
 class AnalysisCreate(BaseModel):
@@ -72,6 +73,7 @@ class AnalysisOut(BaseModel):
     execution_time_ms: float | None
     findings: list[FindingOut]
     candidates: list[CandidateOut]
+    benchmarks: list[BenchmarkOut] = []
     created_at: datetime
     started_at: datetime | None
     finished_at: datetime | None
@@ -91,6 +93,7 @@ class AnalysisOut(BaseModel):
             execution_time_ms=a.execution_time_ms,
             findings=[FindingOut.model_validate(f) for f in a.findings],
             candidates=[CandidateOut.model_validate(c) for c in a.candidates],
+            benchmarks=[BenchmarkOut.model_validate(r) for r in a.benchmark_runs],
             created_at=a.created_at, started_at=a.started_at, finished_at=a.finished_at,
         )
 

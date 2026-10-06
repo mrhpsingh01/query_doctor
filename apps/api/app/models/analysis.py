@@ -7,6 +7,7 @@ from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, Stri
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, CreatedMixin
+from app.models.benchmark import BenchmarkRun
 
 
 class QuerySnapshot(CreatedMixin, Base):
@@ -47,6 +48,7 @@ class Analysis(CreatedMixin, Base):
     candidates: Mapped[list[RecommendationCandidate]] = relationship(
         back_populates="analysis", cascade="all, delete-orphan", order_by="RecommendationCandidate.id"
     )
+    benchmark_runs: Mapped[list[BenchmarkRun]] = relationship(order_by="BenchmarkRun.id", viewonly=True)
 
 
 class Finding(Base):
