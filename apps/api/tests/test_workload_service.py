@@ -66,6 +66,12 @@ def test_an_empty_pg_stat_statements_still_records_an_empty_snapshot(db_session,
     assert svc.dashboard(db_session, project.id)["queries"] == []
 
 
+def test_dashboard_with_no_snapshot_is_empty(db_session, project):
+    data = svc.dashboard(db_session, project.id)
+    assert data["snapshot"] is None and data["queries"] == [] and data["regressions"] == []
+    assert all(v == [] for v in data["panels"].values())
+
+
 def test_the_limit_is_passed_to_the_reader(db_session, project, pgss):
     pgss += [stmt(ORDERS, 5, 1.0), stmt(USERS, 5, 1.0)]
     assert svc.import_snapshot(db_session, object(), project.id, limit=1).query_count == 1

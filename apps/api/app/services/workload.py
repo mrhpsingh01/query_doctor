@@ -3,7 +3,12 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Callable
+from contextlib import AbstractContextManager
+from dataclasses import dataclass
 from typing import Any
+
+import psycopg
 
 from querydoctor.lab.catalog import build_catalog
 from querydoctor.safety import validate_query
@@ -18,6 +23,16 @@ RANKED_LIMIT = 100
 EVIDENCE_ORDER = ("suggested", "planner_validated", "benchmark_validated")
 
 
+@dataclass
+class WorkloadDeps:
+    """What the workload endpoints touch outside the metadata database; tests substitute all of it."""
+
+    target_dsn: str
+    connect: Callable[[str], AbstractContextManager] = psycopg.connect
+    reader: Callable[..., list] | None = None  # (conn, limit) -> list[StatementRow]; default: pg_stat_statements
+    demo_runner: Callable[[str], None] = lambda mode: None  # starts the demo traffic generator in the background
+
+
 def _query(row: WorkloadQueryRow) -> WorkloadQuery:
     return WorkloadQuery(
         fingerprint=row.fingerprint, normalized_sql=row.normalized_sql, sample_sql=row.sample_sql, calls=row.calls,
@@ -27,15 +42,15 @@ def _query(row: WorkloadQueryRow) -> WorkloadQuery:
     )
 
 
-def _snapshot_dict(s: WorkloadSnapshot) -> dict[str, Any]:
+def snapshot_dict(s: WorkloadSnapshot) -> dict[str, Any]:
     return {
         "id": s.id, "project_id": s.project_id, "engine": s.engine, "source": s.source, "taken_at": s.taken_at.isoformat(),
         "query_count": s.query_count, "skipped_count": s.skipped_count,
     }
 
 
-def import_snapshot(session: Session, conn, project_id: int, limit: int = 500) -> WorkloadSnapshot:
-    queries, skipped = merge_statements(read_statements(conn, limit))
+def import_snapshot(session: Session, conn, project_id: int, limit: int = 500, reader=None) -> WorkloadSnapshot:
+    queries, skipped = merge_statements((reader or read_statements)(conn, limit))
     snapshot = WorkloadSnapshot(project_id=project_id, query_count=len(queries), skipped_count=skipped)
     session.add(snapshot)
     session.flush()
@@ -70,6 +85,8 @@ def _validated_fingerprints(session: Session, project_id: int) -> set[str]:
 def dashboard(session: Session, project_id: int, snapshot_id: int | None = None, compare_id: int | None = None) -> dict[str, Any]:
     """The workload view of one snapshot (default: the latest) compared with another (default: the one before it)."""
     snapshots = _snapshots(session, project_id)
+    if not snapshots and snapshot_id is None and compare_id is None:
+        return {"snapshot": None, "compare_to": None, "queries": [], "panels": build_panels([], validated_fingerprints=set(), regressions=[]).model_dump(mode="json"), "regressions": []}
     by_id = {s.id: s for s in snapshots}
     if snapshot_id is not None and snapshot_id not in by_id:
         raise LookupError("snapshot not found")
@@ -89,8 +106,8 @@ def dashboard(session: Session, project_id: int, snapshot_id: int | None = None,
     ranked = rank(queries)
     panels = build_panels(queries, validated_fingerprints=_validated_fingerprints(session, project_id), regressions=regressions)
     return {
-        "snapshot": _snapshot_dict(current),
-        "compare_to": _snapshot_dict(previous) if previous else None,
+        "snapshot": snapshot_dict(current),
+        "compare_to": snapshot_dict(previous) if previous else None,
         "queries": [q.model_dump(mode="json") for q in ranked[:RANKED_LIMIT]],
         "panels": panels.model_dump(mode="json"),
         "regressions": [r.model_dump(mode="json") for r in regressions],
@@ -199,3 +216,10 @@ def query_detail(session: Session, project_id: int, fingerprint: str, scale: str
         "plan_changes": [c.model_dump(mode="json") for c in plan_changes(_analysis_dicts(analyses))],
         "sample": _catalog_sample(fingerprint, scale),
     }
+
+
+def run_demo_traffic(target_dsn: str, scale: str, mode: str) -> dict[str, int]:
+    """Generate the lab's demo traffic with the read-only role (no statistics reset, so snapshots stay comparable)."""
+    from querydoctor.lab.workload import run_workload
+
+    return run_workload(target_dsn, scale, mode)
