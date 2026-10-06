@@ -15,10 +15,26 @@ from querydoctor.lab.generator import generate
 from querydoctor.lab.schema_sql import COLUMNS, DROP_ALL, POST_LOAD_DDL, TABLE_DDL
 
 
-def seed(dsn: str, scale: str = "small", seed: int = 42, *, log=lambda msg: None) -> dict[str, int]:
-    """(Re)create the schema and load it. Returns row counts per table. The role must own/create tables."""
+def _already_seeded(conn: psycopg.Connection) -> bool:
+    for table in TABLE_DDL:
+        exists = conn.execute("SELECT to_regclass(%s)", (f"public.{table}",)).fetchone()[0]
+        if exists is None:
+            return False
+    return conn.execute("SELECT EXISTS (SELECT 1 FROM orders)").fetchone()[0]
+
+
+def seed(
+    dsn: str, scale: str = "small", seed: int = 42, *, if_empty: bool = False, log=lambda msg: None
+) -> dict[str, int]:
+    """(Re)create the schema and load it. Returns row counts per table ({} if skipped by ``if_empty``).
+
+    The role must own/create tables. ``if_empty`` leaves a complete, populated database untouched.
+    """
     counts: dict[str, int] = {}
     with psycopg.connect(dsn, autocommit=True) as conn:
+        if if_empty and _already_seeded(conn):
+            log("database already seeded; skipping")
+            return counts
         conn.execute(DROP_ALL)
         for ddl in TABLE_DDL.values():
             conn.execute(ddl)
@@ -43,9 +59,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--dsn", required=True)
     parser.add_argument("--scale", choices=["small", "full"], default="small")
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--if-empty", action="store_true", help="skip when the database is already populated")
     args = parser.parse_args(argv)
     print(f"Seeding scale={args.scale} seed={args.seed}")
-    counts = seed(args.dsn, args.scale, args.seed, log=print)
+    counts = seed(args.dsn, args.scale, args.seed, if_empty=args.if_empty, log=print)
     print("done:", counts)
     return 0
 

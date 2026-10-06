@@ -1,0 +1,10 @@
+from app.config import Settings
+
+
+def test_small_scale_lowers_the_seq_scan_threshold_and_full_scale_keeps_the_default():
+    assert Settings(scale="small").diagnosis_thresholds().seq_scan_min_rows == 50_000
+    assert Settings(scale="full").diagnosis_thresholds().seq_scan_min_rows == 100_000
+
+
+def test_explicit_threshold_override_wins():
+    assert Settings(scale="small", seq_scan_min_rows=1_234).diagnosis_thresholds().seq_scan_min_rows == 1_234

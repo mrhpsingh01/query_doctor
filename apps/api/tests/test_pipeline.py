@@ -50,6 +50,20 @@ def test_happy_path_persists_plan_findings_and_emits_ordered_events(db_session, 
     assert stub.explain_calls == [{"sql": analysis.snapshot.sql, "params": [4242], "execute": False}]
 
 
+def test_thresholds_from_deps_are_applied(db_session, stub, bus):
+    from querydoctor.diagnosis import Thresholds
+
+    scan = stub.raw[0]["Plan"]["Plans"][0]
+    scan["Rows Removed by Filter"] = 60_000  # 70k rows visited: below the default 100k minimum
+    default_run = make_analysis(db_session)
+    run_analysis_pipeline(db_session, default_run.id, stub.deps(bus))
+    assert [f.rule_id for f in default_run.findings] == []
+
+    tuned = make_analysis(db_session)
+    run_analysis_pipeline(db_session, tuned.id, stub.deps(bus, thresholds=Thresholds(seq_scan_min_rows=50_000)))
+    assert [f.rule_id for f in tuned.findings] == ["PG_SEQ_SCAN_FILTER_WASTE"]
+
+
 def test_execute_flag_reaches_the_explain_runner(db_session, stub, bus):
     analysis = make_analysis(db_session, execute=True)
     run_analysis_pipeline(db_session, analysis.id, stub.deps(bus))

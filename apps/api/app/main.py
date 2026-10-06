@@ -32,7 +32,12 @@ def create_app(
     in deployment the defaults hand analyses to the Celery worker over Redis."""
     settings = settings or get_settings()
     bus = event_bus or get_event_bus(settings.redis_url)
-    deps = pipeline_deps or PipelineDeps(target_dsn=settings.target_dsn, bus=bus, max_plan_bytes=settings.max_plan_bytes)
+    deps = pipeline_deps or PipelineDeps(
+        target_dsn=settings.target_dsn,
+        bus=bus,
+        max_plan_bytes=settings.max_plan_bytes,
+        thresholds=settings.diagnosis_thresholds(),
+    )
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):

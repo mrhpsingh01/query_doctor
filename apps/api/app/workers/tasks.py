@@ -14,7 +14,10 @@ def _runtime():
     settings = get_settings()
     sessionmaker = make_sessionmaker(make_engine(settings.database_url))
     deps = PipelineDeps(
-        target_dsn=settings.target_dsn, bus=get_event_bus(settings.redis_url), max_plan_bytes=settings.max_plan_bytes
+        target_dsn=settings.target_dsn,
+        bus=get_event_bus(settings.redis_url),
+        max_plan_bytes=settings.max_plan_bytes,
+        thresholds=settings.diagnosis_thresholds(),
     )
     return sessionmaker, deps
 

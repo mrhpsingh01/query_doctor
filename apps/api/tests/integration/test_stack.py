@@ -1,0 +1,80 @@
+"""End-to-end against the real stack: `docker compose -f infrastructure/compose.yaml up -d --build`."""
+
+import time
+
+import httpx
+import pytest
+
+pytestmark = [pytest.mark.integration, pytest.mark.stack]
+
+BASE = "http://localhost:8010"
+TERMINAL = {"completed", "failed", "cancelled"}
+
+
+@pytest.fixture(scope="module")
+def http():
+    with httpx.Client(base_url=BASE, timeout=30) as client:
+        yield client
+
+
+def project_id(http) -> int:
+    return http.get("/api/projects").json()[0]["id"]
+
+
+def analyse(http, sql, params, *, execute=False, timeout=60) -> dict:
+    response = http.post("/api/analyses", json={"sql": sql, "params": params, "execute": execute, "project_id": project_id(http)})
+    assert response.status_code == 202, response.text
+    analysis_id = response.json()["id"]
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        body = http.get(f"/api/analyses/{analysis_id}").json()
+        if body["status"] in TERMINAL:
+            return body
+        time.sleep(0.5)
+    pytest.fail(f"analysis {analysis_id} did not finish in {timeout}s")
+
+
+def plan_nodes(node):
+    yield node
+    for child in node["children"]:
+        yield from plan_nodes(child)
+
+
+@pytest.fixture(scope="module")
+def sample_query(http):
+    return http.get("/api/sample-queries").json()[0]
+
+
+def test_plan_only_analysis_of_a_catalog_query(http, sample_query):
+    body = analyse(http, sample_query["sql"], sample_query["params"])
+    assert body["status"] == "completed", body["error"]
+    assert body["execute"] is False and body["plan"]["executed"] is False
+    assert any(n["node_type"] == "Seq Scan" and n["relation_name"] == "orders" for n in plan_nodes(body["plan"]["root"]))
+    assert "PG_SEQ_SCAN_FILTER_WASTE" in [f["rule_id"] for f in body["findings"]]
+
+
+def test_execute_analysis_returns_actuals(http, sample_query):
+    body = analyse(http, sample_query["sql"], sample_query["params"], execute=True)
+    assert body["status"] == "completed", body["error"]
+    assert body["plan"]["executed"] is True and body["execution_time_ms"] > 0
+    assert any(n["actual_rows"] is not None for n in plan_nodes(body["plan"]["root"]))
+
+
+def test_destructive_sql_is_rejected(http):
+    response = http.post("/api/analyses", json={"sql": "DROP TABLE orders", "params": [], "project_id": project_id(http)})
+    assert response.status_code == 422 and response.json()["detail"]["code"] == "not_select"
+
+
+def test_missing_table_ends_failed_with_a_message(http):
+    body = analyse(http, "SELECT * FROM no_such_table", [])
+    assert body["status"] == "failed" and "no_such_table" in body["error"]
+
+
+def test_sse_replays_history_for_a_finished_analysis(http, sample_query):
+    body = analyse(http, sample_query["sql"], sample_query["params"])
+    types = []
+    with http.stream("GET", f"/api/analyses/{body['id']}/events") as response:
+        for line in response.iter_lines():
+            if line.startswith("data: "):
+                types.append(__import__("json").loads(line[6:])["type"])
+    assert types[0] == "validating_query" and types[-1] == "completed"

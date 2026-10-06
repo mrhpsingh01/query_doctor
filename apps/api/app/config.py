@@ -1,6 +1,7 @@
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from querydoctor.diagnosis import Thresholds
 
 
 class Settings(BaseSettings):
@@ -17,6 +18,13 @@ class Settings(BaseSettings):
     auto_create_tables: bool = False  # tests / quick local runs; deployments use `alembic upgrade head`
     max_plan_bytes: int = 5_000_000
     max_sql_chars: int = 20_000
+    seq_scan_min_rows: int | None = None  # overrides the scale-aware default below
+
+    def diagnosis_thresholds(self) -> Thresholds:
+        """Rule thresholds sized to the sample data: the small lab's largest hot table has exactly 100k rows, which
+        would sit on the default 100k 'large scan' boundary, so it uses a lower floor."""
+        floor = self.seq_scan_min_rows or (50_000 if self.scale == "small" else Thresholds().seq_scan_min_rows)
+        return Thresholds(seq_scan_min_rows=floor)
 
 
 @lru_cache

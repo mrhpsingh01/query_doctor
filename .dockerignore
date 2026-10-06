@@ -1,0 +1,11 @@
+.venv
+.git
+.superpowers
+**/__pycache__
+**/*.pyc
+**/node_modules
+**/.next
+apps/web
+docs
+fixtures
+.pytest_cache

@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
 from querydoctor.db import DbError, ExplainTimeout, cancel_backend, collect_schema, explain, guarded_connection
-from querydoctor.diagnosis import AnalysisContext, run_diagnosis
+from querydoctor.diagnosis import AnalysisContext, Thresholds, run_diagnosis
 from querydoctor.plan_parser import parse_explain
 from querydoctor.safety import validate_query
 from sqlalchemy.orm import Session
@@ -37,6 +37,7 @@ class PipelineDeps:
     collect_schema: Callable = collect_schema
     cancel_backend: Callable = cancel_backend
     max_plan_bytes: int = 5_000_000
+    thresholds: Thresholds = field(default_factory=Thresholds)
     candidate_stage: Callable | None = None  # set by the candidate engine (v0.2)
     extra: dict = field(default_factory=dict)
 
@@ -144,7 +145,7 @@ def _run(session: Session, deps: PipelineDeps, analysis: Analysis) -> None:
     session.commit()
 
     _stage(session, deps, analysis, "diagnosing")
-    findings = run_diagnosis(AnalysisContext(plan=plan, schema_=schema, query=vq))
+    findings = run_diagnosis(AnalysisContext(plan=plan, schema_=schema, query=vq, thresholds=deps.thresholds))
     analysis.findings = [FindingRow(**f.model_dump()) for f in findings]
     session.commit()
 

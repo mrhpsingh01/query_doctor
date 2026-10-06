@@ -9,6 +9,20 @@ x-postgres-hypopg: &postgres-hypopg
   image: querydoctor/postgres-hypopg:16
   command: ["postgres", "-c", "shared_preload_libraries=pg_stat_statements", "-c", "max_connections=100"]
 
+x-api-build: &api-build
+  build:
+    context: ..
+    dockerfile: infrastructure/docker/api.Dockerfile
+  image: querydoctor/api:dev
+
+x-api-env: &api-env
+  QD_DATABASE_URL: postgresql+psycopg://querydoctor:querydoctor@querydoctor-db:5432/querydoctor_meta
+  QD_TARGET_DSN: postgresql://qd_readonly:qd_readonly@target-postgres:5432/querydoctor_sample
+  QD_BENCH_DSN: postgresql://qd_bench:qd_bench@bench-postgres:5432/postgres
+  QD_REDIS_URL: redis://redis:6379/0
+  QD_SECRET_KEY: ${QD_SECRET_KEY:-}
+  QD_SCALE: ${QD_SCALE:-small}
+
 services:
   target-postgres:
     <<: *postgres-hypopg
@@ -65,6 +79,45 @@ services:
       interval: 3s
       timeout: 3s
       retries: 30
+
+  seed:
+    <<: *api-build
+    command:
+      - sh
+      - -c
+      - >-
+        python -m querydoctor.lab.seed --if-empty --scale $${QD_SCALE}
+        --dsn postgresql://querydoctor:querydoctor@target-postgres:5432/querydoctor_sample &&
+        python -m querydoctor.lab.seed --if-empty --scale $${QD_SCALE}
+        --dsn postgresql://qd_bench:qd_bench@bench-postgres:5432/querydoctor_sample
+    environment: *api-env
+    depends_on:
+      target-postgres: {condition: service_healthy}
+      bench-postgres: {condition: service_healthy}
+    restart: "no"
+
+  api:
+    <<: *api-build
+    environment: *api-env
+    ports: ["${QD_API_PORT:-8010}:8000"]
+    depends_on:
+      seed: {condition: service_completed_successfully}
+      querydoctor-db: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  worker:
+    <<: *api-build
+    command: ["celery", "-A", "app.workers.celery_app", "worker", "--loglevel=INFO", "--concurrency=2"]
+    environment: *api-env
+    depends_on:
+      seed: {condition: service_completed_successfully}
+      querydoctor-db: {condition: service_healthy}
+      redis: {condition: service_healthy}
 
 volumes:
   target-data:
