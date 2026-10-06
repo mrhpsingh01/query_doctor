@@ -60,7 +60,7 @@ def test_the_bench_user_can_create_fill_and_drop_bench_databases_and_read_the_sa
 
 
 def test_neither_application_user_is_a_root_or_owner():
-    for uri, expected in ((MONGO_RO_URI, {("read", "qd_sample")}), (MONGO_BENCH_URI, {("qdBench", "admin")})):
+    for uri, expected in ((MONGO_RO_URI, {("read", "qd_sample"), ("qdProfileReader", "admin")}), (MONGO_BENCH_URI, {("qdBench", "admin")})):
         granted = {(r["role"], r["db"]) for r in roles_of(uri)}
         assert granted == expected, granted
         assert not any(role in {"root", "dbOwner", "userAdmin", "userAdminAnyDatabase", "dbAdminAnyDatabase", "readWriteAnyDatabase", "clusterAdmin"} for role, _db in granted)
