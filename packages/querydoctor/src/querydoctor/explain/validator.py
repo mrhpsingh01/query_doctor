@@ -23,7 +23,9 @@ _NUMBER = re.compile(
     r"(?<![\w$.])(?P<num>\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)\s?(?:(?P<scale>[kM])(?![A-Za-z]))?\s?"
     r"(?P<unit>MB|GB|KB|ms|%|×|x|s|rows?|blocks?)?(?![\w])"
 )
-_SENTENCE_END = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\[\"'(])|\n+")
+# A citation after the full stop ("It is fast. [F3] Next one.") belongs to the sentence before it, so never split in front
+# of one; a sentence also ends right after its trailing citation.
+_SENTENCE_END = re.compile(r"(?<=[.!?])\s+(?=(?!\[F\d)[A-Z0-9\[\"'(])|(?<=\])\s+(?=[A-Z0-9\"'(])|\n+")
 _DDL = re.compile(
     r"(?-i:\b(?:CREATE|DROP|ALTER|TRUNCATE)\b(?=\s))|\b(?:create|drop|alter|truncate)\s+(?:unique\s+)?(?:index|table|database|schema|view|extension|role|user)\b",
     re.IGNORECASE,
