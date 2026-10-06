@@ -58,6 +58,18 @@ def test_checksum_of_an_empty_result_is_defined():
         assert result_checksum(conn, "SELECT id FROM customers WHERE id < 0", [], ordered=False)
 
 
+def test_checksum_refuses_multi_statement_text_at_the_protocol_level():
+    import time
+
+    from querydoctor.db import DbError
+
+    with psycopg.connect(BENCH_SAMPLE_DSN) as conn:
+        started = time.monotonic()
+        with pytest.raises(DbError):
+            result_checksum(conn, "SELECT 1; SELECT pg_sleep(1.5)", [], ordered=False)
+        assert time.monotonic() - started < 1.0
+
+
 # ---- the benchmark itself -----------------------------------------------------------------------------------------
 
 def test_a_covering_index_makes_the_headline_query_measurably_faster_and_leaves_no_trace():
@@ -80,6 +92,23 @@ def test_a_covering_index_makes_the_headline_query_measurably_faster_and_leaves_
     positions = [stages.index(s) for s in expected]
     assert positions == sorted(positions)
     assert leftover_databases() == []
+
+
+def test_the_measured_queries_run_in_read_only_transactions_but_the_index_build_can_write(monkeypatch):
+    """Defence in depth: whatever the measured query is, it cannot write in the sandbox; only the DDL step may."""
+    import querydoctor.benchmark.runner as runner_module
+
+    seen = []
+    original = runner_module.explain
+
+    def spy(conn, sql, params, *, execute):
+        seen.append(conn.execute("SHOW transaction_read_only").fetchone()[0])
+        return original(conn, sql, params, execute=execute)
+
+    monkeypatch.setattr(runner_module, "explain", spy)
+    result = run_benchmark(BENCH_ADMIN_DSN, Q1.sql, Q1.params, COVERING, FAST)
+    assert result.index_size_bytes > 0  # the CREATE INDEX itself was allowed to write
+    assert len(seen) >= 2 * (FAST.runs + FAST.warmups) and set(seen) == {"on"}
 
 
 def test_benchmarks_of_the_same_candidate_share_a_dataset_snapshot_id():

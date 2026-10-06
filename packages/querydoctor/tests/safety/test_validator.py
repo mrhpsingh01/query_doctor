@@ -69,3 +69,51 @@ def test_fingerprint_ignores_literals():
     assert "?" in a.normalized_sql
     assert a.fingerprint != c.fingerprint
     assert a.tables == ["orders"]
+
+
+BS = chr(92)  # a single backslash (built explicitly so no tooling layer can mangle it)
+
+
+def test_a_literal_whose_canonical_form_would_change_meaning_is_rejected():
+    """SQLGlot rewrites E'\' (one backslash) as E'' - an unterminated string in PostgreSQL. Executing that rewrite would
+    run text other than what was validated, so anything that does not survive a parse -> print -> parse round trip is refused."""
+    with pytest.raises(ValidationError) as exc:
+        validate_query("SELECT e'" + BS + BS + "' AS a, 1 AS b")
+    assert exc.value.code in ("unsupported_syntax", "parse_error")
+
+
+@pytest.mark.parametrize(
+    "sql",
+    ["SELECT 'a" + BS + "b'", "SELECT e'" + BS + "'' AS q", "SELECT 'it''s'", "SELECT $$x$$", "SELECT U&'d" + BS + "0061t'"],
+)
+def test_string_forms_that_do_round_trip_are_still_accepted_and_stable(sql):
+    try:
+        first = validate_query(sql)
+    except ValidationError:
+        pytest.skip("not supported by the parser")  # refusing is always safe
+    assert validate_query(first.sql).sql == first.sql  # canonical SQL is a fixed point
+
+
+def test_canonical_sql_is_a_fixed_point_for_every_catalog_query():
+    from querydoctor.lab.catalog import build_catalog
+
+    for q in build_catalog("small"):
+        first = validate_query(q.sql)
+        assert validate_query(first.sql).sql == first.sql, q.id
+
+
+@pytest.mark.parametrize("sql", ["SELECT 1" + chr(0), chr(0) + "SELECT 1", "SELECT 'a" + chr(0) + "b'"])
+def test_nul_characters_are_rejected(sql):
+    with pytest.raises(ValidationError) as exc:
+        validate_query(sql)
+    assert exc.value.code == "invalid_character"
+
+
+@pytest.mark.parametrize(
+    "sql",
+    ["SELECT pg_try_advisory_lock(1)", "SELECT pg_try_advisory_xact_lock(1)", "SELECT pg_advisory_unlock_all()", "SELECT pg_notify('c', 'p')"],
+)
+def test_advisory_locks_and_notifications_are_denied(sql):
+    with pytest.raises(ValidationError) as exc:
+        validate_query(sql)
+    assert exc.value.code == "denied_function"

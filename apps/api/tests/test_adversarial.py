@@ -42,10 +42,21 @@ def test_hostile_sql_is_refused_before_anything_runs(client, stub, sql, code):
 
 @pytest.mark.parametrize(
     "sql",
-    ["SELECT '; DROP TABLE orders; --'", "SELECT $$; DROP TABLE orders; $$", "SELECT * FROM orders WHERE note = '$1'"],
+    ["SELECT '; DROP TABLE orders; --'", "SELECT * FROM orders WHERE note = '$1'"],
 )
 def test_semicolons_inside_string_literals_are_not_statement_separators(client, sql):
     assert post(client, sql).status_code == 202
+
+
+def test_dollar_quoted_text_is_accepted_or_refused_with_a_code_never_split(client, stub):
+    """The parse -> print -> parse safety check refuses constructs whose canonical form differs (such as $$ quoting). That
+    over-blocks a rare, legal form; the point is that it is never executed as separate statements."""
+    response = post(client, "SELECT $$; DROP TABLE orders; $$")
+    assert response.status_code in (202, 422)
+    if response.status_code == 422:
+        assert response.json()["detail"]["code"] == "unsupported_syntax" and stub.explain_calls == []
+    else:
+        assert all(";" not in c["sql"].replace("'; DROP TABLE orders; '", "") for c in stub.explain_calls)
 
 
 def test_enormous_inputs_are_refused_without_a_server_error(client):
@@ -58,6 +69,21 @@ def test_enormous_inputs_are_refused_without_a_server_error(client):
 def test_structured_parameters_never_reach_the_database(client, stub, params):
     response = post(client, "SELECT $1, $2", params=params)
     assert response.status_code == 422 and response.json()["detail"]["code"] == "param_mismatch"
+    assert stub.explain_calls == []
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        b'{"sql": "SELECT $1", "params": [1e999], "project_id": 1}',  # parses to Infinity
+        b'{"sql": "SELECT $1", "params": [NaN], "project_id": 1}',
+        b'{"sql": "SELECT $1", "params": ["a\\u0000b"], "project_id": 1}',  # NUL inside a parameter
+        b'{"sql": "SELECT 1\\u0000", "params": [], "project_id": 1}',  # NUL inside the SQL
+    ],
+)
+def test_non_finite_numbers_and_nul_characters_are_422_not_500(client, stub, raw):
+    response = client.post("/api/analyses", content=raw, headers={"content-type": "application/json"})
+    assert response.status_code == 422, response.text
     assert stub.explain_calls == []
 
 

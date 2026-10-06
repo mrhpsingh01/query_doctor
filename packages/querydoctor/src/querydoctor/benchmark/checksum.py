@@ -11,7 +11,8 @@ import sqlglot
 from sqlglot import exp
 from sqlglot.errors import SqlglotError
 
-from querydoctor.db.params import literal_args
+from querydoctor.db.errors import ExplainFailed, ExplainTimeout
+from querydoctor.db.protocol import execute_single
 
 
 def has_order_by(sql: str) -> bool:
@@ -28,12 +29,10 @@ def result_checksum(conn: psycopg.Connection, sql: str, params: Sequence[Any], *
     aggregate = "string_agg(t::text, ',')" if ordered else "string_agg(t::text, ',' ORDER BY t::text)"
     wrapped = f"SELECT md5(coalesce({aggregate}, '')) FROM ({sql}) AS t"
     try:
-        with conn.cursor() as cur:
-            cur.execute(f"PREPARE qd_checksum AS {wrapped}")
-            return cur.execute(f"EXECUTE qd_checksum{literal_args(conn, params)}").fetchone()[0]
+        return execute_single(conn, wrapped, params).get_value(0, 0).decode()
+    except psycopg.errors.QueryCanceled as exc:
+        raise ExplainTimeout("the result checksum exceeded the session timeout") from exc
+    except psycopg.Error as exc:
+        raise ExplainFailed(exc.diag.message_primary or str(exc), exc.sqlstate) from exc
     finally:
         conn.rollback()
-        try:
-            conn.execute("DEALLOCATE ALL")
-        finally:
-            conn.rollback()

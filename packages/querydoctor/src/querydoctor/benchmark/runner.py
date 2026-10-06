@@ -145,6 +145,7 @@ def _measure_both(conn, sql, params, ddl, table, config, on_progress, check, tem
     snapshot = hashlib.sha1(f"{template}:{tables}".encode()).hexdigest()[:12]
     ordered = has_order_by(sql)
     conn.rollback()
+    conn.read_only = True  # the measured query can never write; only the DDL step below switches this off
 
     before_samples, before_raw = _runs(conn, sql, params, config.runs, config.warmups, check, on_progress, "warmup_before", "measuring_before")
     check_before = result_checksum(conn, sql, params, ordered=ordered)
@@ -153,6 +154,7 @@ def _measure_both(conn, sql, params, ddl, table, config, on_progress, check, tem
     on_progress("creating_index")
     indexes_before = {r[0] for r in conn.execute("SELECT indexname FROM pg_indexes WHERE schemaname = 'public'")}
     conn.rollback()
+    conn.read_only = False
     conn.autocommit = True
     started = time.perf_counter()
     try:
@@ -167,6 +169,7 @@ def _measure_both(conn, sql, params, ddl, table, config, on_progress, check, tem
     on_progress("analyzing")
     conn.execute(psql.SQL("ANALYZE {}").format(psql.Identifier(table)))
     conn.autocommit = False
+    conn.read_only = True
 
     after_samples, after_raw = _runs(conn, sql, params, config.runs, config.warmups, check, on_progress, "warmup_after", "measuring_after")
     check_after = result_checksum(conn, sql, params, ordered=ordered)

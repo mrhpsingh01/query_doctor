@@ -17,7 +17,10 @@ DENIED_FUNCTIONS = frozenset(
         "table_to_xml", "schema_to_xml", "database_to_xml", "txid_current",
     }
 )
-DENIED_PREFIXES = ("lo_", "dblink", "pg_advisory", "pg_read", "pg_ls", "pg_file", "pg_logical", "pg_create", "pg_drop")
+DENIED_PREFIXES = (
+    "lo_", "dblink", "pg_advisory", "pg_try_advisory", "pg_read", "pg_ls", "pg_file", "pg_logical", "pg_create", "pg_drop",
+    "pg_notify",
+)
 
 
 class ValidationError(ValueError):
@@ -106,7 +109,24 @@ def _has_select_star(root: exp.Expression) -> bool:
     return False
 
 
+def _require_stable_round_trip(root: exp.Expression, canonical: str) -> None:
+    """The canonical text is what gets executed, so it must mean to PostgreSQL what the parsed tree means to us.
+    SQLGlot occasionally prints a construct in a form that reads differently (e.g. an E-string with an escaped backslash
+    becomes an unterminated string). Anything that does not parse back to the identical tree is refused."""
+    try:
+        again = [s for s in sqlglot.parse(canonical, read="postgres") if s is not None]
+    except SqlglotError:
+        again = []
+    if len(again) != 1 or again[0] != root:
+        raise ValidationError(
+            "unsupported_syntax",
+            "this query uses syntax QueryDoctor cannot safely re-write; simplify string escapes or literals and try again",
+        )
+
+
 def validate_query(sql: str, *, max_chars: int = 20_000) -> ValidatedQuery:
+    if "\x00" in sql:
+        raise ValidationError("invalid_character", "the query contains a NUL character, which PostgreSQL cannot accept")
     if len(sql) > max_chars:
         raise ValidationError("too_long", f"query exceeds {max_chars} characters")
     try:
@@ -122,9 +142,12 @@ def validate_query(sql: str, *, max_chars: int = 20_000) -> ValidatedQuery:
     _check_select_only(root)
     _check_functions(root)
 
+    canonical = root.sql(dialect="postgres")
+    _require_stable_round_trip(root, canonical)
+
     normalized = _normalize(root)
     return ValidatedQuery(
-        sql=root.sql(dialect="postgres"),
+        sql=canonical,
         normalized_sql=normalized,
         fingerprint=hashlib.sha1(normalized.encode()).hexdigest()[:16],
         tables=_tables(root),

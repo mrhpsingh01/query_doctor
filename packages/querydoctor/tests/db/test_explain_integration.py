@@ -120,3 +120,20 @@ def test_catalog_queries_show_distinct_slow_plan_patterns(conn):
         if any(n.node_type == "Seq Scan" and n.relation_name == expected_scans[q.id] for n in iter_nodes(plan.root)):
             hits.append(q.id)
     assert len(hits) >= 5, hits
+
+
+def test_text_that_smuggles_a_second_statement_is_refused_by_postgresql_itself(conn):
+    """Even if validation were bypassed, the extended protocol accepts exactly one statement: the second never runs."""
+    import time
+
+    started = time.monotonic()
+    with pytest.raises(ExplainFailed) as exc:
+        explain(conn, "SELECT 1; SELECT pg_sleep(1.5)", [], execute=True)
+    assert "multiple commands" in str(exc.value)
+    assert time.monotonic() - started < 1.0  # pg_sleep(1.5) was never executed
+
+
+def test_non_finite_and_nul_parameters_are_rejected_before_the_database(conn):
+    for bad in (float("nan"), float("inf"), "a" + chr(0) + "b"):
+        with pytest.raises(ParamMismatch):
+            explain(conn, "SELECT id FROM customers WHERE id = $1", [bad], execute=False)
