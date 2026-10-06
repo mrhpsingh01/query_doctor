@@ -15,10 +15,21 @@ class IndexInfo(BaseModel):
     size_bytes: int | None = None
 
 
+class ColumnStats(BaseModel):
+    """What pg_stats knows about a column (only collected with ``collect_schema(extras=True)``)."""
+
+    n_distinct_fraction: float  # distinct values / rows, in (0, 1]; 1.0 means unique
+    null_frac: float
+    correlation: float  # physical-order correlation in [-1, 1]; |1| means rows are stored sorted by this column
+
+
 class TableInfo(BaseModel):
     name: str
     row_estimate: int
     columns: dict[str, str] = Field(default_factory=dict)  # column -> type
+    size_bytes: int | None = None  # relation size; set with extras
+    write_ratio: float | None = None  # writes / (writes + tuples read) since statistics reset; set with extras
+    column_stats: dict[str, ColumnStats] = Field(default_factory=dict)  # set with extras
 
 
 class SchemaSnapshot(BaseModel):
