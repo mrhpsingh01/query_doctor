@@ -54,3 +54,26 @@ def fail_stale_jobs(sessionmaker, max_age_s: float = DEFAULT_MAX_AGE_S) -> int:
     if failed:
         log.info("failed %s stale job(s)", failed)
     return failed
+
+
+def fail_orphaned_jobs(sessionmaker, live_benchmark_ids: set[int], live_analysis_ids: set[int], grace_s: float = 15) -> int:
+    """After a worker (re)starts: fail jobs marked 'running' that no live worker is executing.
+
+    ``live_*_ids`` come from asking the running workers which tasks they hold. Jobs younger than ``grace_s`` are left alone
+    (they may have just been picked up). Queued jobs are untouched: the broker will deliver them."""
+    now = datetime.now(UTC)
+    cutoff = now - timedelta(seconds=grace_s)
+    failed = 0
+    with sessionmaker() as session:
+        for model, noun, live in ((BenchmarkRun, "benchmark", live_benchmark_ids), (Analysis, "analysis", live_analysis_ids)):
+            for job in session.scalars(select(model).where(model.status == "running", model.started_at < cutoff)).all():
+                if job.id in live:
+                    continue
+                job.status = "failed"
+                job.error = f"The worker stopped before this {noun} finished. Start it again."
+                job.finished_at = now
+                failed += 1
+        session.commit()
+    if failed:
+        log.info("failed %s orphaned job(s) after a worker restart", failed)
+    return failed

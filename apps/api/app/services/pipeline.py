@@ -12,6 +12,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
+import psycopg
 from querydoctor.candidates import score_candidates
 from querydoctor.db import DbError, ExplainTimeout, cancel_backend, collect_schema, explain, guarded_connection
 from querydoctor.diagnosis import AnalysisContext, Thresholds, run_diagnosis
@@ -45,6 +46,19 @@ class PipelineDeps:
     hypopg_available: Callable = field(default=lambda conn: _hypopg_available(conn))  # is HypoPG installed on the target?
     predictor: object | None = None  # querydoctor.ranking.Predictor (or a test double); None means heuristic ordering only
     extra: dict = field(default_factory=dict)
+
+
+def database_error_message(exc: psycopg.Error) -> str:
+    """A person-readable reason for a database failure that names no host, object or value."""
+    if isinstance(exc, psycopg.errors.LockNotAvailable):
+        return "A table this query needs is locked by another session, so the analysis gave up waiting. Try again when it is free."
+    if isinstance(exc, psycopg.errors.QueryCanceled):
+        return "The database took too long to answer, so the analysis was stopped. The query may be too heavy to analyse."
+    if isinstance(exc, psycopg.errors.InsufficientPrivilege):
+        return "The database user does not have permission to read something this query needs."
+    if isinstance(exc, psycopg.OperationalError):
+        return "The connection to the database failed or was lost while the analysis was running. Check that it is up and try again."
+    return "The database reported an error that stopped the analysis."
 
 
 def _hypopg_available(conn) -> bool:
@@ -129,6 +143,9 @@ def run_analysis_pipeline(session: Session, analysis_id: int, deps: PipelineDeps
         _finish(session, deps, analysis, "failed", str(exc))
     except ValueError as exc:
         _finish(session, deps, analysis, "failed", f"The analysis input or plan was not usable: {exc}")
+    except psycopg.Error as exc:
+        session.rollback()
+        _finish(session, deps, analysis, "failed", database_error_message(exc))
     except Exception:
         log.exception("analysis %s crashed", analysis_id)
         session.rollback()

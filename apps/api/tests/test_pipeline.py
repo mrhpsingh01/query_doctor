@@ -1,5 +1,6 @@
 import logging
 
+import psycopg
 import pytest
 from querydoctor.db import ExplainFailed, ExplainTimeout
 from querydoctor.safety import validate_query
@@ -168,3 +169,29 @@ def test_already_finished_analysis_is_not_rerun(db_session, stub, bus):
     db_session.commit()
     run_analysis_pipeline(db_session, analysis.id, stub.deps(bus))
     assert stub.explain_calls == []
+
+
+# ---- what the person sees when the target database misbehaves (found by the chaos tests) -------------------------------
+
+@pytest.mark.parametrize(
+    ("error", "words"),
+    [
+        (psycopg.errors.LockNotAvailable("canceling statement due to lock timeout"), ("lock", "another session")),
+        (psycopg.errors.QueryCanceled("canceling statement due to statement timeout"), ("took too long",)),
+        (psycopg.OperationalError("connection to server at 10.1.2.3 failed: server closed the connection unexpectedly"), ("connection", "lost")),
+        (psycopg.errors.InsufficientPrivilege("permission denied for table secret_table"), ("permission",)),
+    ],
+)
+def test_database_errors_in_any_stage_fail_the_analysis_with_a_helpful_message_not_an_internal_error(db_session, stub, bus, error, words):
+    def explode():
+        raise error
+
+    stub.on_schema = explode  # raised while collecting the schema, before the explain stage
+    analysis = make_analysis(db_session)
+    run_analysis_pipeline(db_session, analysis.id, stub.deps(bus))
+    db_session.refresh(analysis)
+    assert analysis.status == "failed"
+    assert "internal error" not in analysis.error.lower()
+    assert all(w in analysis.error.lower() for w in words), analysis.error
+    assert "10.1.2.3" not in analysis.error and "secret_table" not in analysis.error  # no host or object names echoed
+    assert event_types(bus, analysis)[-1] == "failed"

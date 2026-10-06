@@ -81,3 +81,33 @@ def _factory(session):
             return False
 
     return lambda: Ctx()
+
+
+# ---- a restarted worker fails what its predecessor was running, but never a job another worker is still running --------
+
+def test_orphaned_running_jobs_are_failed_unless_a_live_worker_still_has_them(db_session):
+    from app.workers.janitor import fail_orphaned_jobs
+
+    project, snapshot, analysis, candidate = seed(db_session)
+    orphan = run(db_session, analysis, candidate, status="running", started_at=NOW - timedelta(seconds=60), created_at=NOW)
+    cand2 = RecommendationCandidate(analysis_id=analysis.id, candidate_key="k2", table_name="t", ddl="CREATE INDEX ON t (b)")
+    db_session.add(cand2)
+    db_session.flush()
+    live = run(db_session, analysis, cand2, status="running", started_at=NOW - timedelta(seconds=60), created_at=NOW)
+    cand3 = RecommendationCandidate(analysis_id=analysis.id, candidate_key="k3", table_name="t", ddl="CREATE INDEX ON t (c)")
+    db_session.add(cand3)
+    db_session.flush()
+    just_started = run(db_session, analysis, cand3, status="running", started_at=NOW - timedelta(seconds=3), created_at=NOW)
+    queued_analysis = Analysis(project_id=project.id, snapshot=snapshot, status="queued", created_at=NOW - timedelta(hours=1))
+    stuck_analysis = Analysis(project_id=project.id, snapshot=snapshot, status="running", started_at=NOW - timedelta(seconds=60), created_at=NOW)
+    db_session.add_all([queued_analysis, stuck_analysis])
+    db_session.commit()
+
+    failed = fail_orphaned_jobs(_factory(db_session), live_benchmark_ids={live.id}, live_analysis_ids=set(), grace_s=15)
+    db_session.expire_all()
+    assert failed == 2
+    assert db_session.get(BenchmarkRun, orphan.id).status == "failed" and "worker" in db_session.get(BenchmarkRun, orphan.id).error
+    assert db_session.get(BenchmarkRun, live.id).status == "running"  # another worker still owns it
+    assert db_session.get(BenchmarkRun, just_started.id).status == "running"  # too young to judge
+    assert db_session.get(Analysis, stuck_analysis.id).status == "failed"
+    assert db_session.get(Analysis, queued_analysis.id).status == "queued"  # queued jobs will be (re)delivered
