@@ -70,6 +70,16 @@ describe("slowestNodeId and timeShare", () => {
     expect(timeShare(only, { ...slowPlan(), root: only, executed: false })).toBeNull();
   });
 
+  it("shares a MongoDB plan's time among its own stages, whose times are estimates of the server's slot-based execution", () => {
+    const inner = node({ node_id: "0.0", parent_id: "0", node_type: "FETCH", exclusive_time_ms: 13, total_time_ms: 23 });
+    const root = node({ node_id: "0", node_type: "SORT", exclusive_time_ms: 12, total_time_ms: 35, children: [inner] });
+    const plan = { ...slowPlan(), root, engine: "mongodb", execution_time_ms: 458 };
+    expect(timeShare(inner, plan)).toBeCloseTo(13 / 35);
+    expect(timeShare(root, plan)).toBeCloseTo(12 / 35);
+    // PostgreSQL keeps the whole-query time as the denominator
+    expect(timeShare(inner, { ...plan, engine: "postgres" })).toBeCloseTo(13 / 458);
+  });
+
   it("never divides by zero", () => {
     const zero = node({ exclusive_time_ms: 0 });
     expect(timeShare(zero, { ...slowPlan(), root: zero, execution_time_ms: 0 })).toBe(0);

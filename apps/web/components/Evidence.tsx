@@ -10,6 +10,7 @@ function value(key: string, v: unknown): string {
   }
   if (typeof v === "boolean") return v ? "yes" : "no";
   if (v === null || v === undefined) return "n/a";
+  if (typeof v === "object") return JSON.stringify(v); // a MongoDB sort pattern or key list
   return String(v);
 }
 

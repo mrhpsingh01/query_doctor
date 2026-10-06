@@ -23,6 +23,9 @@ function* walk(node: PlanNode): Generator<PlanNode> {
 }
 
 function planTotalMs(plan: ParsedPlan): number | null {
+  // MongoDB reports per-stage times as estimates that do not add up to the server's own total, so a stage's share is
+  // taken among the stages (the root's cumulative time), which keeps the shares comparable and at most 100%.
+  if (plan.engine === "mongodb" && plan.root.total_time_ms != null) return plan.root.total_time_ms;
   if (plan.execution_time_ms !== null) return plan.execution_time_ms;
   const { actual_time_ms, loops } = plan.root;
   return actual_time_ms === null || loops === null ? null : actual_time_ms * loops;
