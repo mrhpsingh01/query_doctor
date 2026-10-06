@@ -11,6 +11,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
+from querydoctor.adapters import get_adapter
 from querydoctor.benchmark import BenchmarkConfig, awards_validation
 from querydoctor.benchmark.runner import BenchmarkCancelled, BenchmarkFailed, run_benchmark
 from sqlalchemy.orm import Session
@@ -76,9 +77,11 @@ def run_benchmark_job(session: Session, run_id: int, deps: BenchmarkDeps) -> Non
             session.commit()
 
     try:
-        result = deps.run(
-            deps.bench_dsn, analysis.snapshot.sql, analysis.snapshot.params, candidate.ddl,
-            BenchmarkConfig(**run.config), on_progress=progress, cancelled=cancelled,
+        snapshot = analysis.snapshot
+        adapter = get_adapter("postgres", benchmark_runner=deps.run) if analysis.engine == "postgres" else get_adapter(analysis.engine)
+        vq = adapter.validate_query(snapshot.sql, snapshot.params, max_chars=max(len(snapshot.sql), 1))
+        result = adapter.benchmark(
+            deps.bench_dsn, vq, snapshot.params, candidate.ddl, BenchmarkConfig(**run.config), on_progress=progress, cancelled=cancelled
         )
     except BenchmarkCancelled:
         _finish(session, deps, run, "cancelled", "cancelled")

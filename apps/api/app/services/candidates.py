@@ -8,12 +8,13 @@ from __future__ import annotations
 
 import logging
 
-from querydoctor.candidates import PlanComparison, ScoredCandidate, generate_candidates, prune_redundant
+from querydoctor.candidates import PlanComparison, ScoredCandidate
 from querydoctor.plan_parser import ParsedPlan
 from sqlalchemy.orm import Session
 
 from app.models import Analysis, RecommendationCandidate
 from app.services import ranking
+from app.services.adapters import adapter_for
 from app.services.pipeline import dsn_for
 
 log = logging.getLogger(__name__)
@@ -44,23 +45,22 @@ def run_candidate_stage(session: Session, deps, analysis: Analysis, plan: Parsed
     """Never raises: candidates are an optional extra, so a failure here must not fail the diagnosis."""
     try:
         snapshot = analysis.snapshot
-        generated = generate_candidates(snapshot.sql, schema, findings)
-        kept, pruned = prune_redundant(generated, schema)
-        table_rows = {name: info.row_estimate for name, info in schema.tables.items()}
+        adapter = adapter_for(deps, analysis.engine)
+        kept, pruned = adapter.generate_candidates(vq, schema, findings)
 
         scored: list[ScoredCandidate] = []
         feature_schema, baseline = schema, plan
         if kept:
             with deps.connect(dsn_for(session, deps, analysis)) as conn:
                 # HypoPG only influences plain EXPLAIN, so the baseline must be a planner-only plan.
-                baseline = plan if not analysis.execute else _planner_only(deps, conn, snapshot)
+                baseline = plan if not analysis.execute else adapter.normalize_plan(adapter.explain(conn, vq, snapshot.params, execute=False))
                 if analysis.connection_id is not None and not deps.hypopg_available(conn):
                     # Index testing needs HypoPG on the target. Without it every idea stays what it is: a suggestion.
                     for c in kept:
                         c.rationale.append(HYPOPG_MISSING_NOTE)
                     scored = [ScoredCandidate(c) for c in kept]
                 else:
-                    scored = deps.scorer(conn, snapshot.sql, snapshot.params, baseline, kept, table_rows)
+                    scored = adapter.test_candidates(conn, vq, snapshot.params, baseline, kept, schema)
                 if getattr(deps, "predictor", None) is not None and analysis.connection_id is None:
                     feature_schema = ranking.schema_with_extras(deps, conn, schema, list(schema.tables))
     except Exception:
@@ -109,9 +109,3 @@ def run_candidate_stage(session: Session, deps, analysis: Analysis, plan: Parsed
     session.commit()
     if predictions:
         ranking.persist_predictions(session, analysis, predictions, model_orders)
-
-
-def _planner_only(deps, conn, snapshot) -> ParsedPlan:
-    from querydoctor.plan_parser import parse_explain
-
-    return parse_explain(deps.explain(conn, snapshot.sql, snapshot.params, execute=False))

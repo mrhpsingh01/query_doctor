@@ -15,13 +15,12 @@ from datetime import UTC, datetime
 import psycopg
 from querydoctor.candidates import score_candidates
 from querydoctor.db import DbError, ExplainTimeout, cancel_backend, collect_schema, explain, guarded_connection
-from querydoctor.diagnosis import AnalysisContext, Thresholds, run_diagnosis
-from querydoctor.plan_parser import parse_explain
-from querydoctor.safety import validate_query
+from querydoctor.diagnosis import Thresholds
 from sqlalchemy.orm import Session
 
 from app.models import Analysis
 from app.models import Finding as FindingRow
+from app.services.adapters import adapter_for
 from app.services.events import EventBus
 
 log = logging.getLogger(__name__)
@@ -160,22 +159,23 @@ def _cancelled(session: Session, analysis: Analysis) -> bool:
 def _run(session: Session, deps: PipelineDeps, analysis: Analysis) -> None:
     snapshot = analysis.snapshot
     _stage(session, deps, analysis, "validating_query")
-    vq = validate_query(snapshot.sql)
+    adapter = adapter_for(deps, analysis.engine)
+    vq = adapter.validate_query(snapshot.sql, snapshot.params, max_chars=max(len(snapshot.sql), 1))
 
     _stage(session, deps, analysis, "collecting_schema")
     with deps.connect(dsn_for(session, deps, analysis)) as conn:
         analysis.backend_pid = conn.info.backend_pid
         session.commit()
-        schema = deps.collect_schema(conn, vq.tables)
+        schema = adapter.collect_schema(conn, vq)
         analysis.schema_json = schema.model_dump()
         session.commit()
 
         _stage(session, deps, analysis, "generating_plan")
-        raw = deps.explain(conn, snapshot.sql, snapshot.params, execute=analysis.execute)
+        raw = adapter.explain(conn, vq, snapshot.params, execute=analysis.execute)
 
     if len(json.dumps(raw)) > deps.max_plan_bytes:
         raise ValueError(f"execution plan is too large to analyse (limit {deps.max_plan_bytes:,} bytes)")
-    plan = parse_explain(raw)
+    plan = adapter.normalize_plan(raw)
     analysis.plan_json = raw
     analysis.plan_fingerprint = plan.fingerprint
     analysis.planning_time_ms = plan.planning_time_ms
@@ -183,7 +183,7 @@ def _run(session: Session, deps: PipelineDeps, analysis: Analysis) -> None:
     session.commit()
 
     _stage(session, deps, analysis, "diagnosing")
-    findings = run_diagnosis(AnalysisContext(plan=plan, schema_=schema, query=vq, thresholds=deps.thresholds))
+    findings = adapter.diagnose(plan, schema, vq, deps.thresholds)
     analysis.findings = [FindingRow(**f.model_dump()) for f in findings]
     session.commit()
 

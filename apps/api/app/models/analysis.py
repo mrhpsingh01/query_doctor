@@ -16,7 +16,8 @@ class QuerySnapshot(CreatedMixin, Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"))
-    sql: Mapped[str] = mapped_column(Text)
+    engine: Mapped[str] = mapped_column(String(20), default="postgres")  # postgres | mongodb
+    sql: Mapped[str] = mapped_column(Text)  # the canonical query text (a JSON spec for MongoDB)
     normalized_sql: Mapped[str] = mapped_column(Text)
     fingerprint: Mapped[str] = mapped_column(String(64), index=True)
     params: Mapped[list[Any]] = mapped_column(JSON, default=list)
@@ -28,6 +29,7 @@ class Analysis(CreatedMixin, Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), index=True)
     snapshot_id: Mapped[int] = mapped_column(ForeignKey("query_snapshots.id", ondelete="CASCADE"))
+    engine: Mapped[str] = mapped_column(String(20), default="postgres")
     connection_id: Mapped[int | None] = mapped_column(ForeignKey("connections.id", ondelete="SET NULL"), default=None)  # None: the sample database
     status: Mapped[str] = mapped_column(String(20), default="queued")  # queued|running|completed|failed|cancelled
     stage: Mapped[str | None] = mapped_column(String(40), default=None)

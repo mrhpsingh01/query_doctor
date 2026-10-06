@@ -46,6 +46,8 @@ class PlanNode(BaseModel):
     total_time_ms: float | None = None  # elapsed time across all loops, corrected for parallel workers
     exclusive_temp_written_blocks: int | None = None  # temp blocks written by this node itself (children excluded)
     exclusive_temp_read_blocks: int | None = None
+    docs_examined: int | None = None  # MongoDB: documents the stage examined (None for PostgreSQL)
+    keys_examined: int | None = None  # MongoDB: index keys the stage examined (None for PostgreSQL)
     io_pressure: Literal["none", "memory", "disk", "temp"] = "none"
 
     raw: dict[str, Any] = Field(default_factory=dict)  # the node's raw JSON without child plans
@@ -58,6 +60,7 @@ class ParsedPlan(BaseModel):
     execution_time_ms: float | None = None
     settings: dict[str, str] = Field(default_factory=dict)
     executed: bool = False
+    engine: str = "postgres"
     fingerprint: str
 
 
