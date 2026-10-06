@@ -34,4 +34,7 @@ COLUMNS: dict[str, list[str]] = {
     "events": ["id", "customer_id", "event_type", "payload", "created_at"],
 }
 
+# The only secondary index: a plain btree on email, so `lower(email) = ...` has an index it cannot use.
+POST_LOAD_DDL = ["CREATE INDEX idx_customers_email ON customers (email)"]
+
 DROP_ALL = "DROP TABLE IF EXISTS " + ", ".join(reversed(list(TABLE_DDL))) + " CASCADE"

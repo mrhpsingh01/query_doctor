@@ -34,7 +34,7 @@ class Thresholds(BaseModel):
     misestimate_warn: float = 10.0
     misestimate_critical: float = 100.0
     misestimate_min_rows: int = 1_000
-    loops_min: int = 1_000
+    loops_min: int = 100
     loop_time_share_warn: float = 0.20
     loop_time_share_critical: float = 0.50
     sort_spill_critical_share: float = 0.50

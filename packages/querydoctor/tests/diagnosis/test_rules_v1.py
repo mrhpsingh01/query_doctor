@@ -121,6 +121,12 @@ def test_repeated_nested_loop_flags_inner_node(load_plan):
     assert RULES["PG_REPEATED_NESTED_LOOP"].evaluate(ctx_plan.root.children[0], ctx) is None
 
 
+def test_repeated_nested_loop_fires_at_a_hundred_loops_when_time_dominates():
+    root = node("Nested Loop", time=1000.0, plans=[node(loops=120, time=7.0)])
+    f = evaluate("PG_REPEATED_NESTED_LOOP", root, execution_time=1000.0)
+    assert f is not None and f.evidence["loops"] == 120
+
+
 def test_repeated_nested_loop_few_loops_is_silent():
     root = node("Nested Loop", time=1000.0, plans=[node(loops=10, time=50.0)])
     assert evaluate("PG_REPEATED_NESTED_LOOP", root) is None

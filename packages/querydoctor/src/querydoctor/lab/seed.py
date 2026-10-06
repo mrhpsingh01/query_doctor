@@ -12,7 +12,7 @@ import time
 import psycopg
 
 from querydoctor.lab.generator import generate
-from querydoctor.lab.schema_sql import COLUMNS, DROP_ALL, TABLE_DDL
+from querydoctor.lab.schema_sql import COLUMNS, DROP_ALL, POST_LOAD_DDL, TABLE_DDL
 
 
 def seed(dsn: str, scale: str = "small", seed: int = 42, *, log=lambda msg: None) -> dict[str, int]:
@@ -32,6 +32,8 @@ def seed(dsn: str, scale: str = "small", seed: int = 42, *, log=lambda msg: None
                     loaded += len(batch)
             counts[table] = loaded
             log(f"  {table}: {loaded:,} rows in {time.perf_counter() - started:.1f}s")
+        for ddl in POST_LOAD_DDL:
+            conn.execute(ddl)
         conn.execute("ANALYZE")
     return counts
 
