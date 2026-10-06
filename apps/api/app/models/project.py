@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from sqlalchemy import ForeignKey, Integer, String, Text
+from datetime import datetime
+
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, CreatedMixin
@@ -27,4 +29,6 @@ class Connection(CreatedMixin, Base):
     port: Mapped[int] = mapped_column(Integer)
     database: Mapped[str] = mapped_column(String(200))
     username: Mapped[str] = mapped_column(String(200))
-    encrypted_password: Mapped[str] = mapped_column(Text)
+    encrypted_password: Mapped[str] = mapped_column(Text)  # empty once the connection is deleted
+    sslmode: Mapped[str] = mapped_column(String(12), default="prefer")
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)

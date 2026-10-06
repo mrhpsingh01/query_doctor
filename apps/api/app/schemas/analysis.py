@@ -15,6 +15,7 @@ class AnalysisCreate(BaseModel):
     params: list[Any] = Field(default_factory=list)
     execute: bool = False
     project_id: int
+    connection_id: int | None = None  # a registered custom connection; None means the sample database
 
 
 class AnalysisAccepted(BaseModel):
@@ -79,6 +80,7 @@ class AnalysisOut(BaseModel):
     status: str
     stage: str | None
     execute: bool
+    connection_id: int | None = None
     error: str | None
     sql: str
     normalized_sql: str
@@ -103,7 +105,7 @@ class AnalysisOut(BaseModel):
             except ValueError:
                 plan = None
         return cls(
-            id=a.id, project_id=a.project_id, status=a.status, stage=a.stage, execute=a.execute, error=a.error,
+            id=a.id, project_id=a.project_id, status=a.status, stage=a.stage, execute=a.execute, connection_id=a.connection_id, error=a.error,
             sql=a.snapshot.sql, normalized_sql=a.snapshot.normalized_sql, fingerprint=a.snapshot.fingerprint,
             params=a.snapshot.params, plan=plan, planning_time_ms=a.planning_time_ms,
             execution_time_ms=a.execution_time_ms,

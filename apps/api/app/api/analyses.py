@@ -14,7 +14,9 @@ from sqlalchemy.orm import Session
 from app.api.sse import sse_stream
 from app.deps import get_session
 from app.models import Analysis, AuditEvent, Project, QuerySnapshot
+from app.services import connections as svc_connections
 from app.schemas.analysis import AnalysisAccepted, AnalysisCreate, AnalysisOut, AnalysisSummary
+from app.services.deletion import delete_everything
 from app.services.pipeline import TERMINAL_STATUSES, emit
 
 router = APIRouter(prefix="/api/analyses", tags=["analyses"])
@@ -48,14 +50,23 @@ def create_analysis(body: AnalysisCreate, request: Request, session: Session = D
     if len(body.params) != vq.param_count:
         raise _422("param_mismatch", f"query uses {vq.param_count} parameter(s) but {len(body.params)} were supplied")
 
+    if body.connection_id is not None:
+        svc_connections.require_enabled(state.settings)
+        connection = svc_connections.live_connection(session, body.connection_id, body.project_id)
+        svc_connections.guard(state.settings, connection.host, connection.port, state.connection_resolver)  # re-checked on every use
+
     snapshot = QuerySnapshot(
         project_id=body.project_id, sql=vq.sql, normalized_sql=vq.normalized_sql, fingerprint=vq.fingerprint,
         params=list(body.params),
     )
-    analysis = Analysis(project_id=body.project_id, snapshot=snapshot, status="queued", execute=body.execute)
+    analysis = Analysis(
+        project_id=body.project_id, snapshot=snapshot, status="queued", execute=body.execute, connection_id=body.connection_id
+    )
     session.add(analysis)
     session.flush()
     session.add(AuditEvent(analysis_id=analysis.id, event_type="analysis_started", detail={"fingerprint": vq.fingerprint}))
+    if body.connection_id is not None:
+        session.add(AuditEvent(analysis_id=analysis.id, event_type="connection_used", detail={"connection_id": body.connection_id}))
     if body.execute:
         session.add(AuditEvent(analysis_id=analysis.id, event_type="execute_explain_requested", detail={}))
     session.commit()
@@ -68,6 +79,16 @@ def create_analysis(body: AnalysisCreate, request: Request, session: Session = D
 @router.get("/{analysis_id}", response_model=AnalysisOut)
 def get_analysis(analysis_id: int, session: Session = Depends(get_session)):
     return AnalysisOut.from_model(_get_or_404(session, analysis_id))
+
+
+@router.delete("/{analysis_id}")
+def delete_analysis(analysis_id: int, session: Session = Depends(get_session)):
+    """Delete an analysis and everything stored under it (privacy: right to erasure)."""
+    analysis = _get_or_404(session, analysis_id)
+    if analysis.status in ("queued", "running"):
+        raise HTTPException(409, detail="the analysis is still running: cancel it first")
+    delete_everything(session, analysis)
+    return {"deleted": analysis_id}
 
 
 @router.post("/{analysis_id}/cancel")

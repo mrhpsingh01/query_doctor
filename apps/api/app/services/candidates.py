@@ -14,11 +14,13 @@ from sqlalchemy.orm import Session
 
 from app.models import Analysis, RecommendationCandidate
 from app.services import ranking
+from app.services.pipeline import dsn_for
 
 log = logging.getLogger(__name__)
 
 MIN_COST_REDUCTION = 0.10
 MIN_OPERATOR_IMPROVEMENT = 0.5
+HYPOPG_MISSING_NOTE = "Index testing is unavailable on this database (the hypopg extension is not installed), so this remains only a suggestion."
 NOT_USED_NOTE = "The planner did not use this index for this query as tested, so it remains only a suggestion."
 
 
@@ -49,11 +51,17 @@ def run_candidate_stage(session: Session, deps, analysis: Analysis, plan: Parsed
         scored: list[ScoredCandidate] = []
         feature_schema, baseline = schema, plan
         if kept:
-            with deps.connect(deps.target_dsn) as conn:
+            with deps.connect(dsn_for(session, deps, analysis)) as conn:
                 # HypoPG only influences plain EXPLAIN, so the baseline must be a planner-only plan.
                 baseline = plan if not analysis.execute else _planner_only(deps, conn, snapshot)
-                scored = deps.scorer(conn, snapshot.sql, snapshot.params, baseline, kept, table_rows)
-                if getattr(deps, "predictor", None) is not None:
+                if analysis.connection_id is not None and not deps.hypopg_available(conn):
+                    # Index testing needs HypoPG on the target. Without it every idea stays what it is: a suggestion.
+                    for c in kept:
+                        c.rationale.append(HYPOPG_MISSING_NOTE)
+                    scored = [ScoredCandidate(c) for c in kept]
+                else:
+                    scored = deps.scorer(conn, snapshot.sql, snapshot.params, baseline, kept, table_rows)
+                if getattr(deps, "predictor", None) is not None and analysis.connection_id is None:
                     feature_schema = ranking.schema_with_extras(deps, conn, schema, list(schema.tables))
     except Exception:
         log.warning("candidate stage failed for analysis %s", analysis.id, exc_info=True)
@@ -64,6 +72,8 @@ def run_candidate_stage(session: Session, deps, analysis: Analysis, plan: Parsed
     for s in scored:
         if s.error:
             dropped.append((s, s.error))
+        elif s.comparison is None:  # not testable on this database (no HypoPG): the note is already on the candidate
+            suggested.append(s)
         elif not s.comparison.uses_candidate:
             s.candidate.rationale.append(NOT_USED_NOTE)
             suggested.append(s)
@@ -76,7 +86,9 @@ def run_candidate_stage(session: Session, deps, analysis: Analysis, plan: Parsed
     # Advice from the ranking model: attached to every testable candidate, and only when it has proven itself against the
     # planner-score heuristic (use_for_ranking) does it order the planner-validated ones. Never touches `validation`.
     predictor = getattr(deps, "predictor", None)
-    predictions = ranking.predict_candidates(predictor, snapshot.sql, feature_schema, baseline, [*validated, *suggested])
+    predictions = ranking.predict_candidates(
+        predictor if analysis.connection_id is None else None, snapshot.sql, feature_schema, baseline, [*validated, *suggested]
+    )
     model_orders = bool(predictions) and bool(getattr(predictor, "use_for_ranking", False))
     if model_orders:
         validated.sort(key=lambda s: -predictions[s.candidate.id].rank_score)

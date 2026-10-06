@@ -8,6 +8,7 @@ from querydoctor.ranking.predictor import Predictor
 from app.config import get_settings
 from app.database import make_engine, make_sessionmaker
 from app.services.benchmarks import BenchmarkDeps, run_benchmark_job
+from app.services.connections import dsn_builder
 from app.services.events import get_event_bus
 from app.services.explanations import ExplainDeps, run_explanation_job
 from app.services.pipeline import PipelineDeps, run_analysis_pipeline
@@ -26,6 +27,7 @@ def _runtime():
         max_plan_bytes=settings.max_plan_bytes,
         thresholds=settings.diagnosis_thresholds(),
         predictor=Predictor.load(settings.model_dir),
+        connection_dsn=dsn_builder(settings),
     )
     return sessionmaker, deps
 

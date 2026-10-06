@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     auto_create_tables: bool = False  # tests / quick local runs; deployments use `alembic upgrade head`
     max_plan_bytes: int = 5_000_000
     max_sql_chars: int = 20_000
+    allow_custom_connections: bool = False  # off by default: analyses run only against the prepared sample database
+    allow_private_networks: bool = False  # lets custom connections reach RFC 1918 hosts (never loopback or metadata)
     ollama_url: str = "http://127.0.0.1:11434"  # a local Ollama server; the model name below enables it
     ollama_model: str = ""  # empty: explanations use the deterministic template only
     ollama_timeout_s: float = 60

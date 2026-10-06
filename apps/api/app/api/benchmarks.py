@@ -40,6 +40,8 @@ def approve_benchmark(
     candidate = session.get(RecommendationCandidate, candidate_id)
     if analysis is None or candidate is None or candidate.analysis_id != analysis.id:
         raise HTTPException(404, detail="analysis or index idea not found")
+    if analysis.connection_id is not None:
+        raise HTTPException(409, detail="Benchmarks run only on the sample database, not on a custom connection.")
     if analysis.status != "completed":
         raise HTTPException(409, detail="the analysis has not finished yet")
     if candidate.dropped:

@@ -41,8 +41,26 @@ class PipelineDeps:
     thresholds: Thresholds = field(default_factory=Thresholds)
     scorer: Callable = score_candidates  # HypoPG scoring; replaceable in tests
     candidate_stage: Callable | None = field(default=None)  # defaults to the real candidate stage
+    connection_dsn: Callable | None = None  # (session, analysis) -> DSN of the analysis's custom connection (guarded)
+    hypopg_available: Callable = field(default=lambda conn: _hypopg_available(conn))  # is HypoPG installed on the target?
     predictor: object | None = None  # querydoctor.ranking.Predictor (or a test double); None means heuristic ordering only
     extra: dict = field(default_factory=dict)
+
+
+def _hypopg_available(conn) -> bool:
+    try:
+        return conn.execute("SELECT 1 FROM pg_extension WHERE extname = 'hypopg'").fetchone() is not None
+    finally:
+        conn.rollback()
+
+
+def dsn_for(session: Session, deps: PipelineDeps, analysis: Analysis) -> str:
+    """The sample target, or (flag permitting) the analysis's registered custom connection."""
+    if analysis.connection_id is None:
+        return deps.target_dsn
+    if deps.connection_dsn is None:
+        raise ValueError("custom connections are not configured")
+    return deps.connection_dsn(session, analysis)
 
 
 class _Stop(Exception):
@@ -128,7 +146,7 @@ def _run(session: Session, deps: PipelineDeps, analysis: Analysis) -> None:
     vq = validate_query(snapshot.sql)
 
     _stage(session, deps, analysis, "collecting_schema")
-    with deps.connect(deps.target_dsn) as conn:
+    with deps.connect(dsn_for(session, deps, analysis)) as conn:
         analysis.backend_pid = conn.info.backend_pid
         session.commit()
         schema = deps.collect_schema(conn, vq.tables)

@@ -1,3 +1,4 @@
+import socket
 import threading
 from collections.abc import Callable
 from contextlib import asynccontextmanager
@@ -7,11 +8,12 @@ from querydoctor.explain import OllamaExplainer
 from querydoctor.ranking.predictor import Predictor
 from sqlalchemy import select
 
-from app.api import analyses, benchmarks, connections, explanations, model, projects, samples, workload
+from app.api import analyses, benchmarks, connections, explanations, model, privacy, projects, samples, workload
 from app.config import Settings, get_settings
 from app.database import make_engine, make_sessionmaker
 from app.models import Base, Project
 from app.services.events import EventBus, get_event_bus
+from app.services.connections import dsn_builder
 from app.services.explanations import ExplainDeps, run_explanation_job
 from app.services.benchmarks import BenchmarkDeps, run_benchmark_job
 from app.services.pipeline import PipelineDeps, run_analysis_pipeline
@@ -37,6 +39,7 @@ def create_app(
     enqueue_benchmark: Callable[[int], None] | None = None,
     workload_deps: WorkloadDeps | None = None,
     explain_deps: ExplainDeps | None = None,
+    connection_resolver: Callable | None = None,
     enqueue_explanation: Callable[[int], None] | None = None,
 ) -> FastAPI:
     """Build the API. ``event_bus`` / ``pipeline_deps`` / ``enqueue`` exist so tests can run everything in-process;
@@ -102,10 +105,16 @@ def create_app(
 
         run_benchmark.delay(run_id)
 
+    resolver = connection_resolver or socket.getaddrinfo
+    app_state_resolver = resolver
+    if deps.connection_dsn is None:
+        deps.connection_dsn = dsn_builder(settings, resolver)
+
     ex_deps = explain_deps or ExplainDeps(
         ollama=OllamaExplainer(settings.ollama_url, settings.ollama_model, settings.ollama_timeout_s) if settings.ollama_model else None
     )
     app.state.explain_deps = ex_deps
+    app.state.connection_resolver = app_state_resolver
 
     def run_explanation_inline(explanation_id: int) -> None:
         with app.state.sessionmaker() as session:
@@ -128,7 +137,7 @@ def create_app(
 
     for router in (
         projects.router, analyses.router, analyses.project_router, benchmarks.router, samples.router, connections.router,
-        workload.router, model.router, explanations.router,
+        workload.router, model.router, explanations.router, privacy.router, connections.project_router,
     ):
         app.include_router(router)
     return app
