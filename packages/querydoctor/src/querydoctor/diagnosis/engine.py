@@ -1,0 +1,29 @@
+from __future__ import annotations
+
+import logging
+from collections.abc import Sequence
+
+from querydoctor.diagnosis.models import SEVERITY_RANK, AnalysisContext, DiagnosisRule, Finding
+from querydoctor.diagnosis.rules import ALL_RULES
+from querydoctor.plan_parser import iter_nodes
+
+log = logging.getLogger(__name__)
+
+
+def run_diagnosis(context: AnalysisContext, rules: Sequence[DiagnosisRule] | None = None) -> list[Finding]:
+    """Evaluate every rule on every applicable node. A crashing rule is logged and skipped, never fatal."""
+    active = ALL_RULES if rules is None else rules
+    findings: list[Finding] = []
+    for node in iter_nodes(context.plan.root):
+        for rule in active:
+            if rule.supported_node_types and node.node_type not in rule.supported_node_types:
+                continue
+            try:
+                finding = rule.evaluate(node, context)
+            except Exception:
+                log.exception("diagnosis rule %s crashed on node %s", rule.rule_id, node.node_id)
+                continue
+            if finding is not None:
+                findings.append(finding)
+    findings.sort(key=lambda f: (SEVERITY_RANK[f.severity], f.rule_id, f.node_ids))
+    return findings
