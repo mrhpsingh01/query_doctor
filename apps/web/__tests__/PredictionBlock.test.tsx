@@ -10,7 +10,9 @@ import { candidate, prediction } from "./fixtures";
 const mocks = vi.hoisted(() => ({ sendFeedback: vi.fn() }));
 vi.mock("@/lib/api", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/api")>()), api: mocks }));
 
-beforeEach(() => mocks.sendFeedback.mockReset());
+beforeEach(() => {
+  mocks.sendFeedback.mockReset();
+});
 
 describe("PredictionBlock", () => {
   it("shows the expected speedup, the probability, the index size and the regression risk", () => {
@@ -99,7 +101,9 @@ describe("FeedbackButtons", () => {
 
   it("shows the server's message and stays usable when posting fails", async () => {
     const user = userEvent.setup();
-    mocks.sendFeedback.mockImplementation(() => Promise.reject(new ApiError("index idea not found", 404)));
+    mocks.sendFeedback.mockImplementation(async () => {
+      throw new ApiError("index idea not found", 404);
+    });
     render(<FeedbackButtons analysisId={5} candidateId={9} />);
     await user.click(screen.getByRole("button", { name: "Helpful" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("index idea not found");
