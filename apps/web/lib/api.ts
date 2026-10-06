@@ -1,6 +1,8 @@
 import type {
   Analysis,
   AnalysisSummary,
+  Explanation,
+  ExplanationKind,
   ModelMonitor,
   ModelResponse,
   FingerprintHistory,
@@ -83,6 +85,11 @@ export const api = {
       body: JSON.stringify({ mode }),
     }),
   listFingerprints: (projectId: number) => request<FingerprintHistory[]>(`/projects/${projectId}/fingerprints`),
+  createExplanation: (analysisId: number, kind: ExplanationKind) =>
+    request<{ id: number; status: string }>(`/analyses/${analysisId}/explanations`, { method: "POST", body: JSON.stringify({ kind }) }),
+  getExplanation: (id: number) => request<Explanation>(`/explanations/${id}`),
+  reviewExplanation: (id: number, accepted: boolean) =>
+    request<{ id: number; reviewed: boolean }>(`/explanations/${id}/review`, { method: "POST", body: JSON.stringify({ accepted }) }),
   getModel: () => request<ModelResponse>("/model"),
   getModelMonitor: () => request<ModelMonitor>("/model/monitor"),
   sendFeedback: (analysisId: number, candidateId: number, helpful: boolean, session: string) =>

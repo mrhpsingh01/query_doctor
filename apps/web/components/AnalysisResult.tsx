@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { BenchmarkPanel } from "@/components/benchmarks/BenchmarkPanel";
 import { CandidatesList } from "@/components/candidates/CandidatesList";
+import { ExplainPanel } from "@/components/explain/ExplainPanel";
 import { FindingsList } from "@/components/findings/FindingsList";
 import { NodeDetailPanel } from "@/components/plan-viewer/NodeDetailPanel";
 import { PlanGraph } from "@/components/plan-viewer/PlanGraph";
@@ -182,6 +183,8 @@ export function AnalysisResult({ analysis, onRefresh }: Props) {
           }}
         />
       </section>
+
+      <ExplainPanel analysisId={analysis.id} />
     </div>
   );
 }

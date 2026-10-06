@@ -369,3 +369,30 @@ export interface ModelMonitor {
   drift: boolean;
   drift_reason: string | null;
 }
+
+// Grounded explanations (apps/api/app/api/explanations.py).
+export type ExplanationKind = "plan" | "findings" | "tradeoffs" | "next_experiment" | "pr_comment";
+
+export interface ExplanationFact {
+  id: string;
+  label: string;
+  value: number | string;
+  unit: string | null;
+  text: string;
+  derivation: string | null;
+}
+
+export interface Explanation {
+  id: number;
+  analysis_id: number;
+  kind: ExplanationKind;
+  status: "queued" | "completed" | "failed";
+  source: string | null;
+  text: string | null;
+  sentences: { text: string; fact_ids: string[] }[];
+  facts: ExplanationFact[];
+  dropped_sentences: string[];
+  fallback_reason: string | null;
+  reviewed: boolean | null;
+  error: string | null;
+}

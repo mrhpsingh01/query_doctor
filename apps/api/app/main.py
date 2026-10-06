@@ -3,14 +3,16 @@ from collections.abc import Callable
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from querydoctor.explain import OllamaExplainer
 from querydoctor.ranking.predictor import Predictor
 from sqlalchemy import select
 
-from app.api import analyses, benchmarks, connections, model, projects, samples, workload
+from app.api import analyses, benchmarks, connections, explanations, model, projects, samples, workload
 from app.config import Settings, get_settings
 from app.database import make_engine, make_sessionmaker
 from app.models import Base, Project
 from app.services.events import EventBus, get_event_bus
+from app.services.explanations import ExplainDeps, run_explanation_job
 from app.services.benchmarks import BenchmarkDeps, run_benchmark_job
 from app.services.pipeline import PipelineDeps, run_analysis_pipeline
 from app.services.workload import WorkloadDeps, run_demo_traffic
@@ -34,6 +36,8 @@ def create_app(
     benchmark_deps: BenchmarkDeps | None = None,
     enqueue_benchmark: Callable[[int], None] | None = None,
     workload_deps: WorkloadDeps | None = None,
+    explain_deps: ExplainDeps | None = None,
+    enqueue_explanation: Callable[[int], None] | None = None,
 ) -> FastAPI:
     """Build the API. ``event_bus`` / ``pipeline_deps`` / ``enqueue`` exist so tests can run everything in-process;
     in deployment the defaults hand analyses to the Celery worker over Redis."""
@@ -98,6 +102,23 @@ def create_app(
 
         run_benchmark.delay(run_id)
 
+    ex_deps = explain_deps or ExplainDeps(
+        ollama=OllamaExplainer(settings.ollama_url, settings.ollama_model, settings.ollama_timeout_s) if settings.ollama_model else None
+    )
+    app.state.explain_deps = ex_deps
+
+    def run_explanation_inline(explanation_id: int) -> None:
+        with app.state.sessionmaker() as session:
+            run_explanation_job(session, explanation_id, ex_deps)
+
+    def run_explanation_in_worker(explanation_id: int) -> None:
+        from app.workers.tasks import run_explanation
+
+        run_explanation.delay(explanation_id)
+
+    # the template explainer is instant, so only a language-model draft needs the worker
+    use_inline = in_process or not ex_deps.uses_model
+    app.state.enqueue_explanation = enqueue_explanation or (run_explanation_inline if use_inline else run_explanation_in_worker)
     app.state.enqueue = enqueue or (run_inline if in_process else run_in_worker)
     app.state.enqueue_benchmark = enqueue_benchmark or (run_benchmark_inline if in_process else run_benchmark_in_worker)
 
@@ -107,7 +128,7 @@ def create_app(
 
     for router in (
         projects.router, analyses.router, analyses.project_router, benchmarks.router, samples.router, connections.router,
-        workload.router, model.router,
+        workload.router, model.router, explanations.router,
     ):
         app.include_router(router)
     return app

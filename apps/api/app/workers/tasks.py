@@ -9,6 +9,7 @@ from app.config import get_settings
 from app.database import make_engine, make_sessionmaker
 from app.services.benchmarks import BenchmarkDeps, run_benchmark_job
 from app.services.events import get_event_bus
+from app.services.explanations import ExplainDeps, run_explanation_job
 from app.services.pipeline import PipelineDeps, run_analysis_pipeline
 from app.services.workload import run_demo_traffic
 from app.workers.celery_app import celery_app
@@ -52,6 +53,17 @@ def run_benchmark(run_id: int) -> None:
     sessionmaker, deps = _benchmark_runtime()
     with sessionmaker() as session:
         run_benchmark_job(session, run_id, deps)
+
+
+@celery_app.task(name="qd.run_explanation")
+def run_explanation(explanation_id: int) -> None:
+    from querydoctor.explain import OllamaExplainer
+
+    settings = get_settings()
+    sessionmaker, _deps = _runtime()
+    ollama = OllamaExplainer(settings.ollama_url, settings.ollama_model, settings.ollama_timeout_s) if settings.ollama_model else None
+    with sessionmaker() as session:
+        run_explanation_job(session, explanation_id, ExplainDeps(ollama=ollama))
 
 
 @celery_app.task(name="qd.run_demo_workload")
