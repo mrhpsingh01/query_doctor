@@ -15,10 +15,12 @@ import re
 import time
 from collections.abc import Callable, Sequence
 from contextlib import suppress
+from dataclasses import dataclass
 from typing import Any
 
 import psycopg
 from psycopg import sql as psql
+from pydantic import BaseModel
 
 from querydoctor.benchmark.checksum import has_order_by, result_checksum
 from querydoctor.benchmark.models import BenchmarkConfig, BenchmarkResult, RunSample
@@ -148,7 +150,23 @@ def _checksums(conn, sql, params, ordered: bool) -> tuple[str, str | None]:
     )
 
 
-def _measure_both(conn, sql, params, ddl, table, config, on_progress, check, template) -> BenchmarkResult:
+@dataclass
+class _Environment:
+    version: str
+    settings: dict[str, Any]
+    snapshot: str
+
+
+@dataclass
+class _Baseline:
+    samples: list[RunSample]
+    raw: list[dict]
+    checks: tuple[str, str | None]
+    stats: Any  # RunStats
+    plan_fingerprint: str
+
+
+def _environment(conn, template: str) -> _Environment:
     version = conn.execute("SELECT version()").fetchone()[0].split(" on ")[0]
     settings = dict(conn.execute("SELECT name, setting FROM pg_settings WHERE name = ANY(%s)", (list(_SETTINGS),)).fetchall())
     tables = conn.execute(
@@ -156,13 +174,21 @@ def _measure_both(conn, sql, params, ddl, table, config, on_progress, check, tem
         "WHERE n.nspname = 'public' AND c.relkind = 'r' ORDER BY 1"
     ).fetchall()
     snapshot = hashlib.sha1(f"{template}:{tables}".encode()).hexdigest()[:12]
-    ordered = has_order_by(sql)
     conn.rollback()
-    conn.read_only = True  # the measured query can never write; only the DDL step below switches this off
+    return _Environment(version, settings, snapshot)
 
-    before_samples, before_raw = _runs(conn, sql, params, config.runs, config.warmups, check, on_progress, "warmup_before", "measuring_before")
-    checks_before = _checksums(conn, sql, params, ordered)
 
+def _baseline(conn, sql, params, ordered, config, on_progress, check) -> _Baseline:
+    """Measure the original query. The connection must already be read-only."""
+    samples, raw = _runs(conn, sql, params, config.runs, config.warmups, check, on_progress, "warmup_before", "measuring_before")
+    return _Baseline(
+        samples=samples, raw=raw, checks=_checksums(conn, sql, params, ordered),
+        stats=summarize([s.execution_ms for s in samples]), plan_fingerprint=parse_explain(raw).fingerprint,
+    )
+
+
+def _create_index(conn, ddl: str, check, on_progress) -> tuple[float, str | None, int]:
+    """Create the real index (the only step that may write). Returns (build ms, index name, size in bytes)."""
     check()
     on_progress("creating_index")
     indexes_before = {r[0] for r in conn.execute("SELECT indexname FROM pg_indexes WHERE schemaname = 'public'")}
@@ -177,34 +203,140 @@ def _measure_both(conn, sql, params, ddl, table, config, on_progress, check, tem
     build_ms = (time.perf_counter() - started) * 1000
     created = [r[0] for r in conn.execute("SELECT indexname FROM pg_indexes WHERE schemaname = 'public'") if r[0] not in indexes_before]
     size = conn.execute("SELECT pg_relation_size(%s::regclass)", (created[0],)).fetchone()[0] if created else 0
+    return build_ms, (created[0] if created else None), int(size)
 
-    check()
-    on_progress("analyzing")
-    conn.execute(psql.SQL("ANALYZE {}").format(psql.Identifier(table)))
+
+def _drop_index(conn, name: str) -> None:
+    conn.rollback()
+    conn.read_only = False
+    conn.autocommit = True
+    conn.execute(psql.SQL("DROP INDEX {}").format(psql.Identifier(name)))
     conn.autocommit = False
     conn.read_only = True
 
-    after_samples, after_raw = _runs(conn, sql, params, config.runs, config.warmups, check, on_progress, "warmup_after", "measuring_after")
-    checks_after = _checksums(conn, sql, params, ordered)
 
-    on_progress("comparing")
-    before = summarize([s.execution_ms for s in before_samples])
-    after = summarize([s.execution_ms for s in after_samples])
-    first_ratio = max(
-        before_samples[0].execution_ms / before.median_ms if before.median_ms else 1.0,
-        after_samples[0].execution_ms / after.median_ms if after.median_ms else 1.0,
-    )
-    match, output_notes = compare_outputs(checks_before[0], checks_after[0], checks_before[1], checks_after[1])
-    after_plan = parse_explain(after_raw)
-    index_used = bool(created) and any(n.index_name == created[0] for n in iter_nodes(after_plan.root))
-    warnings = reliability_warnings(before, after, config=config, checksum_match=match, first_run_ratio=first_ratio)
-    warnings += output_notes
-    if not index_used:
-        warnings.append("The new index was not used by the query's final plan, so any speed difference is not attributable to it.")
-    return BenchmarkResult(
-        before=before, after=after, before_samples=before_samples, after_samples=after_samples,
-        improvement_pct=improvement_pct(before.median_ms, after.median_ms), index_size_bytes=int(size),
-        index_build_ms=build_ms, plan_fingerprint_before=parse_explain(before_raw).fingerprint,
-        plan_fingerprint_after=after_plan.fingerprint, checksum_match=match, index_used=index_used, warnings=warnings,
-        pg_version=version, settings=settings, dataset_snapshot=snapshot, ddl=ddl,
-    )
+def _measure_candidate(conn, sql, params, ddl, table, ordered, config, on_progress, check, env, base, *, drop_after) -> BenchmarkResult:
+    """Create the index, analyze, measure again and compare with ``base``. With ``drop_after`` the index is removed
+    again (also when something fails) so the next candidate starts from the same schema as the baseline."""
+    created_name: str | None = None
+    try:
+        build_ms, created_name, size = _create_index(conn, ddl, check, on_progress)
+        check()
+        on_progress("analyzing")
+        conn.execute(psql.SQL("ANALYZE {}").format(psql.Identifier(table)))
+        conn.autocommit = False
+        conn.read_only = True
+
+        after_samples, after_raw = _runs(conn, sql, params, config.runs, config.warmups, check, on_progress, "warmup_after", "measuring_after")
+        checks_after = _checksums(conn, sql, params, ordered)
+
+        on_progress("comparing")
+        before = base.stats
+        after = summarize([s.execution_ms for s in after_samples])
+        first_ratio = max(
+            base.samples[0].execution_ms / before.median_ms if before.median_ms else 1.0,
+            after_samples[0].execution_ms / after.median_ms if after.median_ms else 1.0,
+        )
+        match, output_notes = compare_outputs(base.checks[0], checks_after[0], base.checks[1], checks_after[1])
+        after_plan = parse_explain(after_raw)
+        index_used = created_name is not None and any(n.index_name == created_name for n in iter_nodes(after_plan.root))
+        warnings = reliability_warnings(before, after, config=config, checksum_match=match, first_run_ratio=first_ratio)
+        warnings += output_notes
+        if not index_used:
+            warnings.append("The new index was not used by the query's final plan, so any speed difference is not attributable to it.")
+        return BenchmarkResult(
+            before=before, after=after, before_samples=base.samples, after_samples=after_samples,
+            improvement_pct=improvement_pct(before.median_ms, after.median_ms), index_size_bytes=size,
+            index_build_ms=build_ms, plan_fingerprint_before=base.plan_fingerprint,
+            plan_fingerprint_after=after_plan.fingerprint, checksum_match=match, index_used=index_used, warnings=warnings,
+            pg_version=env.version, settings=env.settings, dataset_snapshot=env.snapshot, ddl=ddl,
+        )
+    finally:
+        if drop_after and created_name is not None:
+            with suppress(Exception):
+                _drop_index(conn, created_name)
+
+
+def _measure_both(conn, sql, params, ddl, table, config, on_progress, check, template) -> BenchmarkResult:
+    env = _environment(conn, template)
+    ordered = has_order_by(sql)
+    conn.read_only = True  # the measured query can never write; only the DDL step switches this off
+    base = _baseline(conn, sql, params, ordered, config, on_progress, check)
+    return _measure_candidate(conn, sql, params, ddl, table, ordered, config, on_progress, check, env, base, drop_after=False)
+
+
+class CandidateMeasurement(BaseModel):
+    ddl: str
+    result: BenchmarkResult | None = None
+    error: str | None = None  # why this candidate could not be measured (the others are unaffected)
+
+
+def measure_candidates(
+    bench_dsn: str,
+    sql: str,
+    params: Sequence[Any],
+    ddls: Sequence[str],
+    config: BenchmarkConfig,
+    on_progress: Callable[[str], None] = lambda stage: None,
+    *,
+    cancelled: Callable[[], bool] = lambda: False,
+    template: str = "querydoctor_sample",
+) -> list[CandidateMeasurement]:
+    """Measure several index candidates for one query in ONE clone, sharing a single baseline measurement.
+
+    clone -> measure the original once -> for each candidate: create index, ANALYZE, measure, checksum, DROP INDEX.
+    Every candidate sees the same schema as the baseline, so results are comparable and cheap to produce. The safety
+    rules of ``run_benchmark`` apply unchanged (plain CREATE INDEX only, measurement in read-only transactions,
+    sandbox and slot released in ``finally``). A candidate that cannot be created or measured yields an ``error``
+    entry; cancellation and timeout abort the whole run.
+    """
+    if not ddls:
+        return []
+    deadline = time.monotonic() + config.timeout_s
+
+    def check() -> None:
+        if cancelled():
+            raise BenchmarkCancelled("The benchmark was cancelled.")
+        if time.monotonic() >= deadline:
+            raise BenchmarkTimeout(f"The benchmark did not finish within {config.timeout_s} seconds.")
+
+    slot = _acquire_slot(bench_dsn)
+    sandbox = Sandbox(bench_dsn, template)
+    try:
+        on_progress("creating_sandbox")
+        sandbox.create()
+        with guarded_connection(sandbox.dsn, role_kind="bench_admin", statement_timeout_ms=STATEMENT_TIMEOUT_MS) as conn:
+            env = _environment(conn, template)
+            ordered = has_order_by(sql)
+            conn.read_only = True
+            base = _baseline(conn, sql, params, ordered, config, on_progress, check)
+            results: list[CandidateMeasurement] = []
+            for ddl in ddls:
+                try:
+                    table = _validate_ddl(ddl)
+                    result = _measure_candidate(conn, sql, params, ddl, table, ordered, config, on_progress, check, env, base, drop_after=True)
+                    results.append(CandidateMeasurement(ddl=ddl, result=result))
+                except (BenchmarkCancelled, BenchmarkTimeout):
+                    raise
+                except BenchmarkFailed as exc:
+                    results.append(CandidateMeasurement(ddl=ddl, error=str(exc)))
+                except (psycopg.Error, DbError) as exc:
+                    message = getattr(getattr(exc, "diag", None), "message_primary", None) or str(exc)
+                    results.append(CandidateMeasurement(ddl=ddl, error=f"The measurement failed: {message}"))
+                    with suppress(Exception):
+                        conn.rollback()
+            return results
+    except BenchmarkFailed:
+        raise
+    except SandboxError as exc:
+        raise BenchmarkFailed(f"The benchmark copy could not be prepared ({exc}). Try again in a moment.") from exc
+    except (psycopg.Error, DbError) as exc:
+        message = getattr(getattr(exc, "diag", None), "message_primary", None) or str(exc)
+        raise BenchmarkFailed(f"The benchmark failed: {message}") from exc
+    finally:
+        with suppress(Exception):
+            sandbox.drop()
+        with suppress(Exception):
+            slot.close()
+        with suppress(Exception):
+            on_progress("teardown")
