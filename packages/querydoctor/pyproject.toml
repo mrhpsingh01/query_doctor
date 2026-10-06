@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "querydoctor"
+version = "0.1.0"
+description = "Evidence-based PostgreSQL performance investigator"
+requires-python = ">=3.12"
+dependencies = [
+  "pydantic>=2",
+  "sqlglot>=25",
+  "psycopg[binary]>=3.2",
+  "numpy>=1.26",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/querydoctor"]
