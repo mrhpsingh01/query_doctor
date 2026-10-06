@@ -1,6 +1,8 @@
 import type {
   Analysis,
   AnalysisSummary,
+  ModelMonitor,
+  ModelResponse,
   FingerprintHistory,
   Project,
   SampleQuery,
@@ -81,6 +83,14 @@ export const api = {
       body: JSON.stringify({ mode }),
     }),
   listFingerprints: (projectId: number) => request<FingerprintHistory[]>(`/projects/${projectId}/fingerprints`),
+  getModel: () => request<ModelResponse>("/model"),
+  getModelMonitor: () => request<ModelMonitor>("/model/monitor"),
+  sendFeedback: (analysisId: number, candidateId: number, helpful: boolean, session: string) =>
+    request<{ id: number; helpful: boolean }>(`/analyses/${analysisId}/candidates/${candidateId}/feedback`, {
+      method: "POST",
+      headers: { "X-QD-Session": session },
+      body: JSON.stringify({ helpful }),
+    }),
   /** Where a finished analysis's report can be downloaded (a plain link, not a fetch). */
   reportUrl: (analysisId: number, format: "md" | "html") => `/api/analyses/${analysisId}/report?format=${format}`,
 };

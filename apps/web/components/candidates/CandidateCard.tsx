@@ -3,6 +3,8 @@
 import { useId, useState } from "react";
 import { formatPercent, formatRows } from "@/lib/format";
 import type { Candidate } from "@/lib/types";
+import { FeedbackButtons } from "./FeedbackButtons";
+import { PredictionBlock } from "./PredictionBlock";
 import { ValidationBadge } from "./ValidationBadge";
 
 interface Props {
@@ -11,6 +13,8 @@ interface Props {
   onApprove?: (candidate: Candidate) => void;
   /** True while a benchmark for this candidate is already queued or running. */
   busy?: boolean;
+  /** When supplied, the card offers thumbs up/down feedback on the idea. */
+  analysisId?: number;
 }
 
 function planChange(c: Candidate): string | null {
@@ -27,7 +31,7 @@ function planChange(c: Candidate): string | null {
   ).replace("-", "−")}).`;
 }
 
-export function CandidateCard({ candidate, onApprove, busy = false }: Props) {
+export function CandidateCard({ candidate, onApprove, busy = false, analysisId }: Props) {
   const [confirmed, setConfirmed] = useState(false);
   const confirmId = useId();
   const score = candidate.planner_score && candidate.comparison ? Math.round(candidate.planner_score * 100) : null;
@@ -68,6 +72,9 @@ export function CandidateCard({ candidate, onApprove, busy = false }: Props) {
           ))}
         </div>
       )}
+
+      <PredictionBlock prediction={candidate.prediction} />
+      {analysisId !== undefined && <FeedbackButtons analysisId={analysisId} candidateId={candidate.id} />}
 
       {onApprove && (
         <div className="grid gap-2 border-t border-line pt-3">

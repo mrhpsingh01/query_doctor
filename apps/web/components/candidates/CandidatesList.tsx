@@ -6,11 +6,13 @@ interface Props {
   candidates: Candidate[];
   onApprove?: (candidate: Candidate) => void;
   busyCandidateId?: number | null;
+  /** The analysis the candidates belong to; enables feedback buttons. */
+  analysisId?: number;
   /** Rendered under each recommended card (the benchmark panel). */
   renderExtra?: (candidate: Candidate) => ReactNode;
 }
 
-export function CandidatesList({ candidates, onApprove, busyCandidateId = null, renderExtra }: Props) {
+export function CandidatesList({ candidates, onApprove, busyCandidateId = null, renderExtra, analysisId }: Props) {
   const recommended = candidates.filter((c) => !c.dropped).sort((a, b) => a.rank - b.rank);
   const ruledOut = candidates.filter((c) => c.dropped);
 
@@ -27,7 +29,7 @@ export function CandidatesList({ candidates, onApprove, busyCandidateId = null, 
       {recommended.length === 0 && <p className="text-sm text-ink-2">No index idea survived testing for this query.</p>}
       {recommended.map((c) => (
         <div key={c.id} className="grid gap-2">
-          <CandidateCard candidate={c} onApprove={onApprove} busy={busyCandidateId === c.id} />
+          <CandidateCard candidate={c} onApprove={onApprove} busy={busyCandidateId === c.id} analysisId={analysisId} />
           {renderExtra?.(c)}
         </div>
       ))}

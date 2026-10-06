@@ -115,6 +115,20 @@ export function candidate(overrides: Partial<import("@/lib/types").Candidate> = 
     dropped: false,
     drop_reason: null,
     rank: 1,
+    prediction: null,
+    ...overrides,
+  };
+}
+
+export function prediction(overrides: Partial<import("@/lib/types").Prediction> = {}): import("@/lib/types").Prediction {
+  return {
+    expected_speedup: 8.2, p_improve: 0.93, expected_index_mb: 4.5, p_regression: 0.02, rank_score: 1.4, used_for_ranking: false,
+    model_version: "lgbm_regressor-abc123",
+    contributions: [
+      { feature: "d_removed_seq_scans", value: 1, effect: 1.2, phrase: "removes a sequential scan raises the expected speedup" },
+      { feature: "c_equality_cov", value: 1, effect: 0.6, phrase: "how many of the equality filters the index covers raises the expected speedup" },
+      { feature: "t_log_rows", value: 11.5, effect: -0.2, phrase: "how many rows the table holds lowers the expected speedup" },
+    ],
     ...overrides,
   };
 }

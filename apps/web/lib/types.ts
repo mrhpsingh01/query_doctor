@@ -59,6 +59,24 @@ export interface Finding {
   next_actions: string[];
 }
 
+export interface Contribution {
+  feature: string;
+  value: number;
+  effect: number;
+  phrase: string;
+}
+
+export interface Prediction {
+  expected_speedup: number;
+  p_improve: number;
+  expected_index_mb: number;
+  p_regression: number;
+  rank_score: number;
+  used_for_ranking: boolean;
+  model_version: string;
+  contributions: Contribution[];
+}
+
 export interface Candidate {
   id: number;
   candidate_key: string;
@@ -76,6 +94,8 @@ export interface Candidate {
   dropped: boolean;
   drop_reason: string | null;
   rank: number;
+  /** The ranking model's advice. Never evidence: `validation` is the evidence level. */
+  prediction: Prediction | null;
 }
 
 export interface RunStats {
@@ -284,4 +304,68 @@ export interface WorkloadQueryDetail {
   }[];
   plan_changes: PlanChange[];
   sample: { query_id: string; title: string; sql: string; params: unknown[] } | null;
+}
+
+// The ranking model (apps/api/app/api/model.py).
+export interface ModelMetrics {
+  ndcg_at_3: number;
+  precision_at_3: number;
+  top1_improves: number;
+  mae_log_speedup?: number;
+  brier?: number;
+  ece?: number;
+}
+
+export interface ModelCv {
+  ndcg_at_3_mean: number;
+  ndcg_at_3_std: number;
+  precision_at_3_mean: number;
+  precision_at_3_std: number;
+  folds: number;
+}
+
+export interface ReliabilityPoint {
+  bin_lo: number;
+  bin_hi: number;
+  mean_pred: number;
+  frac_pos: number;
+  count: number;
+}
+
+export interface ModelMeta {
+  available: true;
+  feature_names: string[];
+  feature_version: number;
+  created_at: string;
+  models: Record<string, { holdout: ModelMetrics; cv: ModelCv }>;
+  deployed_model: string;
+  use_for_ranking: boolean;
+  reason: string;
+  paired_ndcg_gain: { mean: number; lo: number; hi: number; queries: number; groups: number };
+  importances: Record<string, Record<string, number>>;
+  calibration: {
+    brier_raw: number;
+    brier_calibrated: number;
+    ece_raw: number;
+    ece_calibrated: number;
+    points_raw: ReliabilityPoint[];
+    points_calibrated: ReliabilityPoint[];
+    calibrated: boolean;
+  };
+  dataset: { rows: number; groups: number; queries: number; by_variant: Record<string, number>; useful_rate: number; regression_rate: number; decoy_rate: number };
+  data_hash: string;
+  n_holdout_groups: number;
+  versions: Record<string, string>;
+}
+
+export type ModelResponse = { available: false } | ModelMeta;
+
+export interface ModelMonitor {
+  n: number;
+  mae_log_speedup: number | null;
+  training_mae: number | null;
+  precision_of_positive: number | null;
+  calibration: ReliabilityPoint[];
+  drift: boolean;
+  drift_reason: string | null;
 }

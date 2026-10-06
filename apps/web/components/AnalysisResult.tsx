@@ -173,6 +173,7 @@ export function AnalysisResult({ analysis, onRefresh }: Props) {
         )}
         <CandidatesList
           candidates={analysis.candidates}
+          analysisId={analysis.id}
           onApprove={approve}
           busyCandidateId={[...latestRun.values()].find(isActive)?.candidate_id ?? null}
           renderExtra={(c) => {
