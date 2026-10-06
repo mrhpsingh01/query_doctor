@@ -1,25 +1,16 @@
 from __future__ import annotations
 
-import datetime as dt
-import decimal
 from collections.abc import Sequence
 from typing import Any
 
 import psycopg
-from psycopg import sql as psql
 
 from querydoctor.db.errors import ExplainFailed, ExplainTimeout, ParamMismatch
+from querydoctor.db.params import check_params, literal_args
 
 PLAN_ONLY = "FORMAT JSON, VERBOSE, COSTS, SETTINGS"
 WITH_ACTUALS = "ANALYZE, BUFFERS, WAL, FORMAT JSON, VERBOSE, SETTINGS"
 _STMT = "qd_stmt"
-_SCALARS = (int, float, str, bool, type(None), decimal.Decimal, dt.date, dt.datetime, dt.time)
-
-
-def check_params(params: Sequence[Any]) -> None:
-    for i, value in enumerate(params, start=1):
-        if not isinstance(value, _SCALARS):
-            raise ParamMismatch(f"parameter ${i} has unsupported type {type(value).__name__}")
 
 
 def explain(conn: psycopg.Connection, sql: str, params: Sequence[Any] = (), *, execute: bool = False) -> list[dict]:
@@ -44,10 +35,7 @@ def explain(conn: psycopg.Connection, sql: str, params: Sequence[Any] = (), *, e
             ).fetchone()[0]
             if expected != len(params):
                 raise ParamMismatch(f"query expects {expected} parameter(s) but {len(params)} were supplied")
-            args = ""
-            if params:
-                literals = [psql.Literal(p).as_string(conn) for p in params]
-                args = f"({', '.join(literals)})"
+            args = literal_args(conn, params)
             row = cur.execute(f"EXPLAIN ({options}) EXECUTE {_STMT}{args}").fetchone()
             return row[0]
     except psycopg.errors.QueryCanceled as exc:
