@@ -106,7 +106,7 @@ def test_query_features_on_a_join_a_select_star_and_a_subquery():
     cat = {q.id: q.sql for q in build_catalog("small")}
     join = feats(cat["orders_payments_join"], "CREATE INDEX ON payments (order_id)")
     assert (join["q_tables"], join["q_joins"], join["q_join_cols"], join["c_lead_join"], join["c_lead_equality"]) == (2, 1, 2, 1, 0)  # a join key is counted on both sides: orders.id and payments.order_id
-    star = extract_features(build(cat["select_star_wide_join"], "CREATE INDEX ON orders (status, created_at)", schema=shop_schema()))
+    star = extract_features(build(cat["select_star_wide_join"], "CREATE INDEX ON orders (status, id, customer_id, created_at)", schema=shop_schema()))
     assert star["q_select_star"] == 1 and star["q_tables"] >= 2
     sub = feats(cat["correlated_subquery"], "CREATE INDEX ON orders (customer_id)")
     assert sub["q_subqueries"] >= 1
