@@ -29,6 +29,48 @@ layers behind it.
 | XSS through query text or finding titles | The HTML report escapes every value and loads no external assets; React escapes UI output. | `test_report` |
 | A client trusting a stale or dishonest label | The evidence level comes from the server and can only be raised by a measured, output-checked benchmark. | `test_benchmarks_api` |
 
+## Custom connections and the network guard
+
+Connections to your own PostgreSQL databases exist only when the operator sets `QD_ALLOW_CUSTOM_CONNECTIONS=true`
+(default off: the API answers 403). Passwords are encrypted with Fernet, are never returned or logged, and are overwritten
+when a connection is deleted. Every host is checked by `querydoctor.netguard` when it is registered **and again each time
+it is used**; the host is resolved once and the connection is made to the checked IP address (`hostaddr`) while the name
+is kept for TLS, so a DNS answer that changes later cannot redirect it (rebinding).
+
+| Target | Result |
+|---|---|
+| `127.0.0.0/8`, `::1`, `localhost`, `*.localhost`, `0.0.0.0` | always blocked |
+| `169.254.0.0/16` (including `169.254.169.254`), `fe80::/10` | always blocked |
+| Multicast, reserved, documentation ranges, `fec0::/10` | always blocked |
+| `10/8`, `172.16/12`, `192.168/16`, `100.64/10`, `fc00::/7` | blocked unless `QD_ALLOW_PRIVATE_NETWORKS=true` |
+| IPv4-mapped / 6to4 / Teredo / NAT64 forms of any of the above | classified by the embedded IPv4 address |
+| Decimal, hex and octal spellings (`2130706433`, `0x7f000001`, `0177.0.0.1`, `127.1`) | parsed as the IP they denote, then classified |
+| A name resolving to several addresses | blocked if **any** of them is blocked |
+| Ports other than 5432 (configurable allowlist) | blocked |
+| `target-postgres`, `bench-postgres` | allowed by name (the lab's own containers) |
+
+Sessions on custom databases are read-only, run as a non-superuser and time out like the sample's. Benchmarks are
+refused for custom connections (409), and index testing is skipped, leaving ideas as *suggested*, when HypoPG is missing.
+Connection errors and block reasons never echo credentials or resolver internals.
+
+## Explanations and the language model
+
+Explanations are composed from numbered facts computed from the analysis (never from rows or parameters). A local
+Ollama model may draft one, but its draft is checked by the claim validator: every number must match a fact at the
+precision shown, sentences must cite facts, and any SQL or DDL rejects the draft; otherwise the deterministic template
+is shown with the reason. Nothing an explanation says is executed.
+
+## Logs
+
+A log record factory (`app/logging_utils.py`) removes string and number literals from SQL text, SQLAlchemy parameter
+dumps and PostgreSQL error `DETAIL` values from every logger; engines use `hide_parameters=True`.
+
+## Deleting data
+
+`DELETE /api/analyses/{id}` removes an analysis with its findings, ideas, predictions, benchmarks, explanations and
+feedback, and the canonical query once nothing else uses it; `DELETE /api/connections/{id}` wipes credentials. `GET
+/api/privacy` lists exactly what is stored.
+
 ## What is stored
 
 The canonical query and its parameters, the execution plan, schema details (row estimates, column types, indexes),
@@ -36,7 +78,8 @@ findings, candidates, benchmark results and an audit trail. **Rows returned by q
 benchmark compares outputs with a server-side checksum.
 
 Audit events: `analysis_started`, `execute_explain_requested`, `benchmark_approved`, `sandbox_index_created`,
-`benchmark_cancelled`, `job_cancelled`, `report_exported`.
+`benchmark_cancelled`, `job_cancelled`, `report_exported`, `connection_created`, `connection_used`, `connection_deleted`,
+`explanation_requested`, `explanation_reviewed`, `analysis_deleted`.
 
 ## Never automatic
 
@@ -45,6 +88,8 @@ creates lives in a throwaway clone, after you confirm.
 
 ## Known limits
 
+* Failure injection (lock contention, a restarted target database, a killed worker, a hanging language model) is covered by
+  `pytest -m chaos apps/api/tests/chaos` against the running stack.
 * **No authentication.** This release is a single-user demo and must not be exposed to an untrusted network as is.
 * The default credentials in `compose.yaml` are for local development. Set `QD_SECRET_KEY` (a Fernet key) and change
   the database passwords for any shared deployment.

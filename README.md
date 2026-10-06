@@ -81,6 +81,18 @@ better than the planner score, so the planner score keeps ordering them; see [do
 for the numbers and limits. The **Models** page shows the comparison, calibration and live monitoring. Rebuild the model
 with `python -m querydoctor.lab.dataset_gen` (measures candidates; resumable) and `python -m querydoctor.ranking.train_cli`.
 
+## Explanations, your own databases, privacy
+
+* **Explain** (on every analysis) writes a plain-language explanation of the plan, findings, trade-offs, next experiment
+  or a pull-request comment. Each sentence cites numbered facts shown beside it, so every number is traceable. A
+  deterministic template always works; with `QD_OLLAMA_MODEL` set (a local Ollama model) a draft is requested and
+  **validated**: invented numbers, uncited sentences or SQL are removed or rejected and the template is used instead.
+* **Your own PostgreSQL databases** can be registered in Settings once an operator sets `QD_ALLOW_CUSTOM_CONNECTIONS=true`
+  (off by default). Hosts are checked against loopback, link-local, metadata and private ranges, DNS rebinding is
+  closed, and passwords are encrypted and never shown. See [docs/security.md](docs/security.md).
+* **Privacy:** the Settings page lists what is stored, queries and parameters never reach the logs, and an analysis or
+  connection can be deleted at any time.
+
 ## How it works
 
 ```mermaid
@@ -175,9 +187,8 @@ docs/                   architecture, security, rule catalog, design spec and im
 
 ## Scope of this release
 
-PostgreSQL 16, `SELECT` queries, one at a time, against the sample database. Not included yet: your own database
-connections, authentication, grounded
-LLM explanations, and MongoDB support. The design for the first release is in
+PostgreSQL 16, `SELECT` queries, one at a time, against the sample database. Not included yet: authentication and MongoDB
+support (your own PostgreSQL databases are available behind an off-by-default flag). The design for the first release is in
 [docs/superpowers/specs](docs/superpowers/specs) and the build plan in [docs/superpowers/plans](docs/superpowers/plans).
 
 The SQL editor (Monaco) loads from a CDN; without network access the page falls back to a plain text area.
