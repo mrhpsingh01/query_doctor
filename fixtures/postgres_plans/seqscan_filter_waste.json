@@ -1,0 +1,66 @@
+[
+  {
+    "Plan": {
+      "Node Type": "Sort",
+      "Parallel Aware": false,
+      "Startup Cost": 61500.1,
+      "Total Cost": 61527.2,
+      "Plan Rows": 10900,
+      "Plan Width": 48,
+      "Actual Startup Time": 741.5,
+      "Actual Total Time": 741.9,
+      "Actual Rows": 10842,
+      "Actual Loops": 1,
+      "Output": [
+        "id",
+        "total_amount",
+        "created_at"
+      ],
+      "Sort Key": [
+        "created_at DESC"
+      ],
+      "Sort Method": "quicksort",
+      "Sort Space Used": 1200,
+      "Sort Space Type": "Memory",
+      "Shared Hit Blocks": 120,
+      "Shared Read Blocks": 18000,
+      "Temp Read Blocks": 0,
+      "Temp Written Blocks": 0,
+      "Plans": [
+        {
+          "Node Type": "Seq Scan",
+          "Parent Relationship": "Outer",
+          "Parallel Aware": false,
+          "Relation Name": "orders",
+          "Schema": "public",
+          "Alias": "orders",
+          "Startup Cost": 0.0,
+          "Total Cost": 60400.0,
+          "Plan Rows": 10900,
+          "Plan Width": 48,
+          "Actual Startup Time": 0.04,
+          "Actual Total Time": 735.2,
+          "Actual Rows": 10842,
+          "Actual Loops": 1,
+          "Output": [
+            "id",
+            "total_amount",
+            "created_at"
+          ],
+          "Filter": "(orders.customer_id = 4242)",
+          "Rows Removed by Filter": 1813561,
+          "Shared Hit Blocks": 120,
+          "Shared Read Blocks": 18000,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        }
+      ]
+    },
+    "Settings": {
+      "work_mem": "4MB",
+      "random_page_cost": "4"
+    },
+    "Planning Time": 0.21,
+    "Execution Time": 742.1
+  }
+]

@@ -1,0 +1,24 @@
+[
+  {
+    "Plan": {
+      "Node Type": "Seq Scan",
+      "Parallel Aware": false,
+      "Relation Name": "orders",
+      "Schema": "public",
+      "Alias": "orders",
+      "Startup Cost": 0.0,
+      "Total Cost": 60400.0,
+      "Plan Rows": 1000000,
+      "Plan Width": 80,
+      "Output": [
+        "id",
+        "customer_id",
+        "status"
+      ],
+      "Filter": "(orders.status = 'pending'::text)"
+    },
+    "Settings": {
+      "work_mem": "4MB"
+    }
+  }
+]

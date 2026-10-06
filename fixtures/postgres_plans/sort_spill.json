@@ -1,0 +1,47 @@
+[
+  {
+    "Plan": {
+      "Node Type": "Sort",
+      "Parallel Aware": false,
+      "Startup Cost": 150000.0,
+      "Total Cost": 152500.0,
+      "Plan Rows": 1000000,
+      "Plan Width": 40,
+      "Actual Startup Time": 2100.0,
+      "Actual Total Time": 2300.0,
+      "Actual Rows": 1000000,
+      "Actual Loops": 1,
+      "Sort Key": [
+        "total_amount"
+      ],
+      "Sort Method": "external merge",
+      "Sort Space Used": 41000,
+      "Sort Space Type": "Disk",
+      "Shared Hit Blocks": 10,
+      "Shared Read Blocks": 9000,
+      "Temp Read Blocks": 5100,
+      "Temp Written Blocks": 5120,
+      "Plans": [
+        {
+          "Node Type": "Seq Scan",
+          "Parent Relationship": "Outer",
+          "Parallel Aware": false,
+          "Relation Name": "orders",
+          "Alias": "orders",
+          "Startup Cost": 0.0,
+          "Total Cost": 20000.0,
+          "Plan Rows": 1000000,
+          "Plan Width": 40,
+          "Actual Startup Time": 0.02,
+          "Actual Total Time": 500.0,
+          "Actual Rows": 1000000,
+          "Actual Loops": 1,
+          "Shared Hit Blocks": 10,
+          "Shared Read Blocks": 9000
+        }
+      ]
+    },
+    "Planning Time": 0.1,
+    "Execution Time": 2400.0
+  }
+]
