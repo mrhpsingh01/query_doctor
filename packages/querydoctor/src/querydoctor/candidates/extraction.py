@@ -22,6 +22,7 @@ class TableUsage(BaseModel):
     group_by: list[str] = Field(default_factory=list)
     output: list[str] = Field(default_factory=list)
     expressions: list[str] = Field(default_factory=list)  # e.g. "lower(email)" used in a predicate
+    constants: dict[str, str] = Field(default_factory=dict)  # column -> literal it is compared to with =, e.g. 'pending'
     select_star: bool = False
 
 
@@ -137,6 +138,8 @@ def _classify_predicate(
                     _add(u.join, col.name)
             return  # same-table or range column comparisons are not index-shaping
         # the other side comes from an outer query: this is a per-row lookup, i.e. an equality
+    if isinstance(cmp, exp.EQ) and isinstance(other, exp.Literal):
+        u.constants.setdefault(col.name, other.sql(dialect="postgres"))
     if isinstance(cmp, (exp.EQ, exp.In)):
         _add(u.equality, col.name)
     elif isinstance(cmp, _RANGE):

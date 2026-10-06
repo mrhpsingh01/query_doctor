@@ -84,6 +84,13 @@ def test_select_star_is_flagged_instead_of_listing_columns():
     assert usage.select_star is True and usage.output == []
 
 
+def test_literal_equalities_are_remembered_as_constants_but_parameters_are_not():
+    usage = extract_usage("SELECT id FROM orders WHERE status = 'pending' AND customer_id = $1 AND currency IN ('USD')")
+    orders = usage["orders"]
+    assert orders.constants == {"status": "'pending'"}
+    assert orders.equality == ["status", "customer_id", "currency"]
+
+
 def test_every_catalog_query_extracts_without_error():
     for q in build_catalog("small"):
         assert extract_usage(q.sql), q.id
