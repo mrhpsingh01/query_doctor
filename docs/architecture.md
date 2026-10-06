@@ -57,7 +57,9 @@ A candidate's `validation` is one of `suggested`, `planner_validated`, `benchmar
   10% estimated cost reduction, or a sequential scan replaced by an index scan, or a sort removed).
 * `benchmark_validated` requires a completed benchmark with a median improvement of at least 10% (below that is
   indistinguishable from noise), matching result checksums (row order among ties on an `ORDER BY` key is ignored), the new
-  index actually appearing in the indexed plan, and no blocking or high-variance warning.
+  index actually appearing in the indexed plan, no blocking warning, and clear separation: even the p95 of the indexed runs
+  must beat the original median. (Relative variance alone does not veto: a 0.3 ms query has high CV even when every run
+  is far faster than the original. The variance warning is still shown.)
 
 The planner score is `0.35·cost + 0.25·rows read + 0.20·plan risk + 0.20·operator improvement` (each term 0–1) and is
 documented as evidence, not proof.

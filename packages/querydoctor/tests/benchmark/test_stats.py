@@ -135,8 +135,20 @@ def test_a_clear_comparable_improvement_that_uses_the_index_is_validated():
         dict(index_used=False),  # faster only by chance: the plan never used the index
         dict(checksum_match=False),
         dict(warnings=["Output differs: the query returned different results"]),
-        dict(warnings=["High variance in the before timings (CV 40%)"]),
+        # a 12% "improvement" whose slow runs are no better than a typical original run: the distributions overlap
+        dict(improvement_pct=12.0, before=summarize([8, 10, 12, 9, 11, 10, 10]), after=summarize([7, 9, 14, 8, 10, 9, 13])),
     ],
 )
 def test_noise_regressions_unused_indexes_and_incomparable_results_are_not_validated(over):
     assert awards_validation(result(**over)) is False
+
+
+def test_high_variance_alone_does_not_block_validation_when_the_runs_are_clearly_separated():
+    """A sub-millisecond indexed query has large *relative* jitter (CV ~0.3) yet every indexed run beats every original
+    run. Variance only matters when the two distributions overlap, so the warning is shown but does not veto."""
+    noisy_but_separated = result(
+        before=summarize([9.0, 10.0, 11.0, 10.5, 9.5]), after=summarize([0.2, 0.3, 0.45, 0.25, 0.4]), improvement_pct=96.0,
+        warnings=["High variance in the after timings (CV 33%)"],
+    )
+    assert noisy_but_separated.after.cv > 0.25
+    assert awards_validation(noisy_but_separated) is True

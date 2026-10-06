@@ -35,13 +35,19 @@ def compare_outputs(
 
 
 def awards_validation(result: BenchmarkResult) -> bool:
-    """May this result upgrade a candidate to 'benchmark-validated'? Only a clear, comparable, attributable speed-up."""
+    """May this result upgrade a candidate to 'benchmark-validated'? Only a clear, comparable, attributable speed-up.
+
+    "Clear" means the gap survives the noise: the median improved by at least MIN_IMPROVEMENT_PCT *and* even the slow end
+    of the indexed runs (p95) beats the typical original run (median). That is robust to run-to-run jitter without
+    penalising sub-millisecond queries, whose relative variance is large even when every indexed run is far faster.
+    """
+    separated = result.after.p95_ms < result.before.median_ms
     return (
         result.improvement_pct >= MIN_IMPROVEMENT_PCT
+        and separated
         and result.checksum_match
         and result.index_used
         and not any(is_blocking(w) for w in result.warnings)
-        and not any(w.startswith("High variance") for w in result.warnings)
     )
 
 

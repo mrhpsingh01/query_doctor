@@ -177,9 +177,8 @@ def test_a_non_blocking_warning_such_as_cache_warming_does_not_stop_validation(c
     [
         make_result(improvement=2.0),  # inside the noise
         make_result(index_used=False, warnings=["The new index was not used by the query's final plan"]),
-        make_result(warnings=["High variance in the before timings (CV 40%)"]),
     ],
-    ids=["noise", "index-unused", "high-variance"],
+    ids=["noise", "index-unused"],
 )
 def test_results_that_do_not_clearly_show_the_index_helping_never_validate_it(client, runner, result):
     runner.result = result
