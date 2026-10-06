@@ -11,7 +11,7 @@ import pathlib
 
 from pydantic import BaseModel, Field
 
-from querydoctor.lab.generator import top_customers
+from querydoctor.lab.generator import light_customer, top_customers
 
 
 class SampleQuery(BaseModel):
@@ -54,8 +54,8 @@ def build_catalog(scale: str = "small") -> list[SampleQuery]:
             title="Orders joined to payments on an unindexed key",
             sql="SELECT o.id, p.amount, p.method FROM orders o JOIN payments p ON p.order_id = o.id "
             "WHERE o.customer_id = $1",
-            params=[heavy],
-            description="payments.order_id is unindexed, so the join must scan all payments.",
+            params=[light_customer(scale)],
+            description="payments.order_id is unindexed, so even a handful of orders makes the join scan all payments.",
             expected_rule_ids=["PG_SEQ_SCAN_FILTER_WASTE"],
             expected_candidate_table="payments",
             expected_candidate_columns=["order_id"],

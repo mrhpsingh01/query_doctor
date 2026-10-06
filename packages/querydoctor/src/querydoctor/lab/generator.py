@@ -127,6 +127,17 @@ def top_customers(scale: str, k: int = 1, seed: int = 42) -> list[int]:
     return [int(x) for x in _customers(scale, seed)["perm"][:k]]
 
 
+def customer_order_count(scale: str, customer_id: int, seed: int = 42) -> int:
+    """How many orders a customer has in the generated data."""
+    return int(np.count_nonzero(_orders(scale, seed)["customer_id"] == customer_id))
+
+
+def light_customer(scale: str, seed: int = 42) -> int:
+    """A customer from the long tail of the activity distribution: a handful of orders, never a heavy hitter."""
+    n = _scale(scale)["customers"]
+    return top_customers(scale, n // 5, seed)[-1]
+
+
 def _fmt(col: np.ndarray) -> list:
     if col.dtype.kind == "M":
         return [None if s == "NaT" else s for s in np.datetime_as_string(col, unit="s").tolist()]

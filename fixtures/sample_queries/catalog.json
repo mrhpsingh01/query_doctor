@@ -41,9 +41,9 @@
     "title": "Orders joined to payments on an unindexed key",
     "sql": "SELECT o.id, p.amount, p.method FROM orders o JOIN payments p ON p.order_id = o.id WHERE o.customer_id = $1",
     "params": [
-      390
+      6801
     ],
-    "description": "payments.order_id is unindexed, so the join must scan all payments.",
+    "description": "payments.order_id is unindexed, so even a handful of orders makes the join scan all payments.",
     "expected_rule_ids": [
       "PG_SEQ_SCAN_FILTER_WASTE"
     ],

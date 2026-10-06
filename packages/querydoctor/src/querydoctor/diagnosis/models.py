@@ -43,6 +43,7 @@ class Thresholds(BaseModel):
     index_filter_min_rows: int = 1_000
     wide_result_bytes: int = 200
     wide_result_warn_bytes: int = 400
+    wide_result_columns: int = 15
     duplicate_min_cost: float = 1_000.0
     duplicate_time_share_warn: float = 0.20
 

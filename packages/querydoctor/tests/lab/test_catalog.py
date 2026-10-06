@@ -65,6 +65,16 @@ def test_customer_param_is_the_heaviest_customer(catalog):
     assert q1.params[0] == top_customers("small", 1)[0]
 
 
+def test_the_join_query_filters_a_light_customer_so_an_index_lookup_beats_a_hash_join(catalog):
+    from querydoctor.lab.generator import customer_order_count
+
+    q3 = next(q for q in catalog if q.id == "orders_payments_join")
+    q1 = next(q for q in catalog if q.id == "recent_orders_by_customer")
+    assert q3.params[0] != q1.params[0]
+    assert 1 <= customer_order_count("small", q3.params[0]) <= 25
+    assert customer_order_count("small", q1.params[0]) > 500  # the headline query's customer is the heavy one
+
+
 def test_committed_json_matches_catalog(catalog):
     committed = json.loads(FIXTURE.read_text(encoding="utf-8"))
     assert committed == [q.model_dump() for q in catalog]

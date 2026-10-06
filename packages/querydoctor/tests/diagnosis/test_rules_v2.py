@@ -152,6 +152,13 @@ def test_select_star_with_wide_rows_is_flagged_by_severity():
     assert info.evidence["plan_width"] == 250 and info.evidence["output_columns"] == 12
 
 
+def test_select_star_across_many_columns_is_flagged_even_when_the_rows_are_narrow():
+    (f,) = only("PG_WIDE_RESULT", node("Gather", width=135, output=[f"t.c{i}" for i in range(21)]), query=STAR)
+    assert f.severity == "info" and f.evidence["output_columns"] == 21
+    assert "21 columns" in f.summary
+    assert only("PG_WIDE_RESULT", node("Gather", width=135, output=["a"] * 8), query=STAR) == []
+
+
 @pytest.mark.parametrize(
     "query,width",
     [(STAR, 100), (NO_STAR, 450), (None, 450)],
