@@ -4,6 +4,7 @@ import type { NextConfig } from "next";
 const API_URL = process.env.QD_API_URL ?? "http://localhost:8010";
 
 const nextConfig: NextConfig = {
+  output: "standalone", // a self-contained server for the Docker image
   compress: false, // keeps server-sent progress events from being buffered by the proxy
   async rewrites() {
     return [{ source: "/api/:path*", destination: `${API_URL}/api/:path*` }];

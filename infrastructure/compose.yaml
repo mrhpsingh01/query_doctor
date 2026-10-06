@@ -110,6 +110,17 @@ services:
       timeout: 3s
       retries: 30
 
+  web:
+    build:
+      context: ../apps/web
+      dockerfile: ../../infrastructure/docker/web.Dockerfile
+      args:
+        QD_API_URL: http://api:8000
+    image: querydoctor/web:dev
+    ports: ["${QD_WEB_PORT:-3000}:3000"]
+    depends_on:
+      api: {condition: service_healthy}
+
   worker:
     <<: *api-build
     command: ["celery", "-A", "app.workers.celery_app", "worker", "--loglevel=INFO", "--concurrency=2"]
