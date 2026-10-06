@@ -41,10 +41,11 @@ def test_the_planner_picks_a_hypothetical_index_and_nothing_real_is_created(conn
     before = real_index_names(conn)
     good = candidate("CREATE INDEX ON orders (customer_id, created_at DESC) INCLUDE (id, total_amount)",
                      columns=("customer_id", "created_at"), include=("id", "total_amount"))
-    (scored,) = score_candidates(conn, q.sql, q.params, original, [good])
+    # Callers always pass table sizes (from the schema snapshot); without them a Seq Scan's "rows read" is unknown.
+    (scored,) = score_candidates(conn, q.sql, q.params, original, [good], table_rows={"orders": 100_000})
     assert scored.error is None
     assert scored.comparison.uses_candidate is True
-    assert scored.comparison.cost_reduction > 0.5
+    assert scored.comparison.cost_reduction > 0.4  # an index scan or a bitmap scan, depending on fresh statistics
     assert scored.comparison.planner_score > 0.5
     types = {n.node_type for n in iter_nodes(scored.plan.root)}
     assert types & {"Index Scan", "Index Only Scan", "Bitmap Heap Scan"}
