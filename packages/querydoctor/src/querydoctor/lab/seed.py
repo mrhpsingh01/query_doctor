@@ -14,7 +14,7 @@ import time
 
 import psycopg
 
-from querydoctor.lab.generator import generate
+from querydoctor.lab.generator import COUNTS, generate
 from querydoctor.lab.schema_sql import COLUMNS, DROP_ALL, POST_LOAD_DDL, TABLE_DDL
 
 
@@ -79,7 +79,7 @@ def warm_workload(admin_dsn: str, readonly_dsn: str, scale: str, *, scale_calls:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Seed the QueryDoctor sample database")
     parser.add_argument("--dsn", required=True)
-    parser.add_argument("--scale", choices=["small", "full"], default="small")
+    parser.add_argument("--scale", choices=sorted(COUNTS), default="small")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--if-empty", action="store_true", help="skip when the database is already populated")
     parser.add_argument("--with-workload", action="store_true", help="run the baseline demo traffic after seeding")

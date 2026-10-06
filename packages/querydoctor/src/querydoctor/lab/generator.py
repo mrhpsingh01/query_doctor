@@ -19,12 +19,20 @@ import numpy as np
 COUNTS: dict[str, dict[str, int]] = {
     "small": {"customers": 10_000, "orders": 100_000, "order_items": 300_000, "events": 500_000},
     "full": {"customers": 100_000, "orders": 1_000_000, "order_items": 3_000_000, "events": 5_000_000},
+    # Variants the recommendation ranker's dataset is built on (see lab.variants). The skew variants share the small
+    # size and differ only in how concentrated customer activity is.
+    "tiny": {"customers": 1_000, "orders": 10_000, "order_items": 30_000, "events": 50_000},
+    "medium": {"customers": 30_000, "orders": 300_000, "order_items": 900_000, "events": 1_500_000},
+    "skew_low": {"customers": 10_000, "orders": 100_000, "order_items": 300_000, "events": 500_000},
+    "skew_high": {"customers": 10_000, "orders": 100_000, "order_items": 300_000, "events": 500_000},
 }
 PRODUCT_DIVISOR = 5  # products = customers / 5
 TABLE_ORDER = ["customers", "products", "orders", "order_items", "payments", "events"]
 BATCH_SIZE = 50_000
 CUSTOMER_ZIPF = 0.8
 PRODUCT_ZIPF = 1.0
+ZIPF: dict[str, float] = {name: CUSTOMER_ZIPF for name in COUNTS}  # customer-activity skew per scale or variant
+ZIPF.update({"skew_low": 0.5, "skew_high": 1.1})
 
 COUNTRIES = [  # (code, weight, currency)
     ("US", 0.30, "USD"), ("GB", 0.10, "GBP"), ("DE", 0.10, "EUR"), ("FR", 0.07, "EUR"), ("ES", 0.04, "EUR"),
@@ -82,7 +90,7 @@ def _customers(scale: str, seed: int) -> dict[str, Any]:
         "country_idx": country_idx,
         "segment": rng.choice(SEGMENTS[0], size=n, p=_norm(SEGMENTS[1])),
         "created_at": _timestamps(rng, n),
-        "weights": _zipf(n, CUSTOMER_ZIPF),
+        "weights": _zipf(n, ZIPF[scale]),
         "perm": rng.permutation(n) + 1,  # activity rank -> customer id (heavy hitters are not ids 1..k)
     }
 
