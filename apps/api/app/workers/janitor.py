@@ -27,6 +27,24 @@ def cleanup_stale_sandboxes(bench_dsn: str, max_age_s: float = DEFAULT_MAX_AGE_S
     return dropped
 
 
+def cleanup_stale_mongo_sandboxes(bench_uri: str, max_age_s: float = DEFAULT_MAX_AGE_S) -> int:
+    """Drop MongoDB sandboxes left behind by crashed workers. Never raises (the server may be down at startup)."""
+    if not bench_uri:
+        return 0
+    try:
+        from pymongo import MongoClient
+        from querydoctor.mongo.sandbox import drop_stale
+
+        with MongoClient(bench_uri, serverSelectionTimeoutMS=3000) as client:
+            dropped = drop_stale(client, max_age_s)
+    except Exception:
+        log.warning("could not clean up stale MongoDB sandboxes", exc_info=True)
+        return 0
+    if dropped:
+        log.info("dropped %s stale MongoDB sandbox(es)", dropped)
+    return dropped
+
+
 def fail_stale_jobs(sessionmaker, max_age_s: float = DEFAULT_MAX_AGE_S) -> int:
     """Fail analyses and benchmarks that a crashed worker left 'running' (or never started) past ``max_age_s``.
 

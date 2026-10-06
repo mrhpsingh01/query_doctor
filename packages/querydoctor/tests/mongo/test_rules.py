@@ -166,6 +166,12 @@ def test_a_sort_that_spilled_to_disk_is_critical_even_when_small():
     assert fired(ctx_for(sort(20_000)))["MONGO_BLOCKING_SORT"][0].severity == "warning"
 
 
+def test_a_sort_with_a_limit_is_judged_by_the_documents_it_read_not_the_few_it_returned():
+    stage = {"stage": "SORT", "sortPattern": {"payload": 1}, "limitAmount": 20, "nReturned": 20, "executionTimeMillisEstimate": 9, "inputStage": {"stage": "COLLSCAN", "nReturned": 300_000, "docsExamined": 300_000, "executionTimeMillisEstimate": 3}}
+    f = fired(ctx_for(stage))["MONGO_BLOCKING_SORT"][0]
+    assert f.evidence["docs_sorted"] == 300_000
+
+
 def test_a_planner_only_sort_uses_the_collection_size_with_less_confidence():
     f = fired(ctx_for({"stage": "SORT", "sortPattern": {"a": 1}, "inputStage": {"stage": "COLLSCAN"}}, executed=False))["MONGO_BLOCKING_SORT"][0]
     assert f.confidence < 0.7

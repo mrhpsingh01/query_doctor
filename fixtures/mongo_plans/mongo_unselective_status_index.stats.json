@@ -55,7 +55,7 @@
   "executionStages": {
    "stage": "PROJECTION_SIMPLE",
    "nReturned": 62007,
-   "executionTimeMillisEstimate": 5,
+   "executionTimeMillisEstimate": 6,
    "works": 62008,
    "advanced": 62007,
    "needTime": 0,
@@ -69,7 +69,7 @@
    "inputStage": {
     "stage": "FETCH",
     "nReturned": 62007,
-    "executionTimeMillisEstimate": 5,
+    "executionTimeMillisEstimate": 6,
     "works": 62008,
     "advanced": 62007,
     "needTime": 0,
@@ -82,7 +82,7 @@
     "inputStage": {
      "stage": "IXSCAN",
      "nReturned": 62007,
-     "executionTimeMillisEstimate": 1,
+     "executionTimeMillisEstimate": 2,
      "works": 62008,
      "advanced": 62007,
      "needTime": 0,

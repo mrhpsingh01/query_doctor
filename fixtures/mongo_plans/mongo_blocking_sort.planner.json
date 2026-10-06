@@ -10,7 +10,7 @@
   },
   "queryHash": "D120294E",
   "planCacheKey": "2509EB11",
-  "optimizationTimeMillis": 319,
+  "optimizationTimeMillis": 283,
   "maxIndexedOrSolutionsReached": false,
   "maxIndexedAndSolutionsReached": false,
   "maxScansToExplodeReached": false,
@@ -20,6 +20,7 @@
     "payload": 1
    },
    "memLimit": 104857600,
+   "limitAmount": 20,
    "type": "simple",
    "inputStage": {
     "stage": "FETCH",
@@ -53,6 +54,7 @@
      "payload": 1
     },
     "memLimit": 104857600,
+    "limitAmount": 20,
     "type": "simple",
     "inputStage": {
      "stage": "FETCH",

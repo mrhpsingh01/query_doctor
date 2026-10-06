@@ -17,7 +17,7 @@ from app.services.explanations import ExplainDeps, run_explanation_job
 from app.services.pipeline import PipelineDeps, run_analysis_pipeline
 from app.services.workload import run_demo_traffic
 from app.workers.celery_app import celery_app
-from app.workers.janitor import cleanup_stale_sandboxes, fail_orphaned_jobs, fail_stale_jobs
+from app.workers.janitor import cleanup_stale_mongo_sandboxes, cleanup_stale_sandboxes, fail_orphaned_jobs, fail_stale_jobs
 
 
 log = logging.getLogger(__name__)
@@ -35,6 +35,7 @@ def _runtime():
         thresholds=settings.diagnosis_thresholds(),
         predictor=Predictor.load(settings.model_dir),
         connection_dsn=dsn_builder(settings),
+        mongo_target_uri=settings.mongo_target_uri,
     )
     return sessionmaker, deps
 
@@ -52,9 +53,12 @@ def _benchmark_runtime():
     sessionmaker = make_sessionmaker(make_engine(settings.database_url))
     def janitor() -> None:
         cleanup_stale_sandboxes(settings.bench_dsn)
+        cleanup_stale_mongo_sandboxes(settings.mongo_bench_uri)
         fail_stale_jobs(sessionmaker)
 
-    return sessionmaker, BenchmarkDeps(bench_dsn=settings.bench_dsn, bus=get_event_bus(settings.redis_url), janitor=janitor)
+    return sessionmaker, BenchmarkDeps(
+        bench_dsn=settings.bench_dsn, bus=get_event_bus(settings.redis_url), janitor=janitor, mongo_bench_uri=settings.mongo_bench_uri
+    )
 
 
 @celery_app.task(name="qd.run_benchmark")
@@ -111,6 +115,7 @@ def _sweep_orphans() -> None:
     fail_orphaned_jobs(sessionmaker, benchmarks, analyses)
     if not benchmarks:  # no benchmark is running anywhere, so any sandbox that is not brand new is an orphan
         cleanup_stale_sandboxes(get_settings().bench_dsn, max_age_s=15)
+        cleanup_stale_mongo_sandboxes(get_settings().mongo_bench_uri, max_age_s=15)
 
 
 @worker_ready.connect

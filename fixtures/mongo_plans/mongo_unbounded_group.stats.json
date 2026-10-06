@@ -29,19 +29,19 @@
     "executionStats": {
      "executionSuccess": true,
      "nReturned": 500000,
-     "executionTimeMillis": 382,
+     "executionTimeMillis": 347,
      "totalKeysExamined": 0,
      "totalDocsExamined": 500000,
      "executionStages": {
       "stage": "PROJECTION_SIMPLE",
       "nReturned": 500000,
-      "executionTimeMillisEstimate": 19,
+      "executionTimeMillisEstimate": 16,
       "works": 500001,
       "advanced": 500000,
       "needTime": 0,
       "needYield": 0,
-      "saveState": 524,
-      "restoreState": 524,
+      "saveState": 518,
+      "restoreState": 518,
       "isEOF": 1,
       "transformBy": {
        "customer_id": 1,
@@ -50,13 +50,13 @@
       "inputStage": {
        "stage": "COLLSCAN",
        "nReturned": 500000,
-       "executionTimeMillisEstimate": 12,
+       "executionTimeMillisEstimate": 11,
        "works": 500001,
        "advanced": 500000,
        "needTime": 0,
        "needYield": 0,
-       "saveState": 524,
-       "restoreState": 524,
+       "saveState": 518,
+       "restoreState": 518,
        "isEOF": 1,
        "direction": "forward",
        "docsExamined": 500000
@@ -65,7 +65,7 @@
     }
    },
    "nReturned": 500000,
-   "executionTimeMillisEstimate": 236
+   "executionTimeMillisEstimate": 254
   },
   {
    "$group": {
@@ -86,7 +86,7 @@
    "numBytesSpilledEstimate": 0,
    "spilledRecords": 0,
    "nReturned": 10000,
-   "executionTimeMillisEstimate": 381
+   "executionTimeMillisEstimate": 336
   }
  ]
 }

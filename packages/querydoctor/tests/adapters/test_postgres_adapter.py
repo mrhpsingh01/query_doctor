@@ -1,5 +1,6 @@
 import json
 import pathlib
+from types import SimpleNamespace
 
 import pytest
 
@@ -73,7 +74,7 @@ def test_the_injected_callables_receive_what_the_pipeline_used_to_pass_them():
     assert adapter.collect_schema("conn", vq) == schema()
     kept, _ = adapter.generate_candidates(vq, schema(), [])
     assert adapter.test_candidates("conn", vq, [1, "x"], adapter.normalize_plan(raw()), kept, schema()) == ["scored"]
-    assert adapter.benchmark("dsn", vq, [1, "x"], "CREATE INDEX ON orders (id)", BenchmarkConfig(), on_progress=print, cancelled=lambda: False, template="t") == "result"
+    assert adapter.benchmark("dsn", vq, [1, "x"], SimpleNamespace(ddl="CREATE INDEX ON orders (id)"), BenchmarkConfig(), on_progress=print, cancelled=lambda: False, template="t") == "result"
     assert calls[0] == ("explain", vq.sql, [1, "x"], True)
     assert calls[1] == ("schema", ["orders"])
     assert calls[2][:4] == ("score", vq.sql, [1, "x"], len(kept)) and calls[2][4] == {"orders": 100_000}

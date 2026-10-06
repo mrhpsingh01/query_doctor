@@ -37,8 +37,8 @@ def build_mongo_catalog(scale: str = "small") -> list[SampleQuery]:
         ),
         SampleQuery(
             id="mongo_blocking_sort", engine="mongodb", title="Sorting a large result in memory",
-            sql=_spec(find="events", filter={"event_type": {"$param": 1}}, sort={"payload": 1}), params=["page_view"],
-            description="Hundreds of thousands of events are sorted by a field no index provides, in memory.",
+            sql=_spec(find="events", filter={"event_type": {"$param": 1}}, sort={"payload": 1}, limit=20), params=["page_view"],
+            description="The twenty first events by payload: hundreds of thousands are read and sorted in memory to find them.",
             expected_rule_ids=["MONGO_BLOCKING_SORT"], expected_candidate_table="events", expected_candidate_columns=["event_type", "payload"],
         ),
         SampleQuery(

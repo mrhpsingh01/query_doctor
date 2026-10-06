@@ -14,6 +14,7 @@ from datetime import UTC, datetime
 from querydoctor.adapters import get_adapter
 from querydoctor.benchmark import BenchmarkConfig, awards_validation
 from querydoctor.benchmark.runner import BenchmarkCancelled, BenchmarkFailed, run_benchmark
+from querydoctor.candidates.models import IndexCandidate, IndexColumn
 from sqlalchemy.orm import Session
 
 from app.models import Analysis, AuditEvent, BenchmarkRun, RecommendationCandidate
@@ -33,6 +34,8 @@ class BenchmarkDeps:
     bench_dsn: str
     bus: EventBus
     run: Callable = run_benchmark  # replaceable in tests
+    mongo_bench_uri: str = ""  # bench user on the MongoDB server
+    mongo_run: Callable | None = None  # replaceable in tests
     janitor: Callable | None = None  # housekeeping before each job (stale sandboxes / jobs); None in tests
 
 
@@ -78,10 +81,19 @@ def run_benchmark_job(session: Session, run_id: int, deps: BenchmarkDeps) -> Non
 
     try:
         snapshot = analysis.snapshot
-        adapter = get_adapter("postgres", benchmark_runner=deps.run) if analysis.engine == "postgres" else get_adapter(analysis.engine)
+        if analysis.engine == "mongodb":
+            extras = {"benchmark_runner": deps.mongo_run} if deps.mongo_run is not None else {}
+            adapter = get_adapter("mongodb", bench_uri=deps.mongo_bench_uri, **extras)
+        else:
+            adapter = get_adapter("postgres", benchmark_runner=deps.run)
         vq = adapter.validate_query(snapshot.sql, snapshot.params, max_chars=max(len(snapshot.sql), 1))
+        idea = IndexCandidate(
+            id=candidate.candidate_key, table=candidate.table_name, columns=[IndexColumn(**c) for c in candidate.columns], ddl=candidate.ddl,
+            rationale=list(candidate.rationale or []), include=list(candidate.include or []), predicate=candidate.predicate,
+            expression=candidate.expression,
+        )
         result = adapter.benchmark(
-            deps.bench_dsn, vq, snapshot.params, candidate.ddl, BenchmarkConfig(**run.config), on_progress=progress, cancelled=cancelled
+            deps.bench_dsn, vq, snapshot.params, idea, BenchmarkConfig(**run.config), on_progress=progress, cancelled=cancelled
         )
     except BenchmarkCancelled:
         _finish(session, deps, run, "cancelled", "cancelled")

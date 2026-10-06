@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from app.models import Analysis, RecommendationCandidate
 from app.services import ranking
 from app.services.adapters import adapter_for
-from app.services.pipeline import dsn_for
+from app.services.pipeline import open_target
 
 log = logging.getLogger(__name__)
 
@@ -51,7 +51,7 @@ def run_candidate_stage(session: Session, deps, analysis: Analysis, plan: Parsed
         scored: list[ScoredCandidate] = []
         feature_schema, baseline = schema, plan
         if kept:
-            with deps.connect(dsn_for(session, deps, analysis)) as conn:
+            with open_target(session, deps, analysis) as conn:
                 # HypoPG only influences plain EXPLAIN, so the baseline must be a planner-only plan.
                 baseline = plan if not analysis.execute else adapter.normalize_plan(adapter.explain(conn, vq, snapshot.params, execute=False))
                 if analysis.connection_id is not None and not deps.hypopg_available(conn):
@@ -61,7 +61,7 @@ def run_candidate_stage(session: Session, deps, analysis: Analysis, plan: Parsed
                     scored = [ScoredCandidate(c) for c in kept]
                 else:
                     scored = adapter.test_candidates(conn, vq, snapshot.params, baseline, kept, schema)
-                if getattr(deps, "predictor", None) is not None and analysis.connection_id is None:
+                if getattr(deps, "predictor", None) is not None and analysis.connection_id is None and analysis.engine == "postgres":
                     feature_schema = ranking.schema_with_extras(deps, conn, schema, list(schema.tables))
     except Exception:
         log.warning("candidate stage failed for analysis %s", analysis.id, exc_info=True)
@@ -87,7 +87,7 @@ def run_candidate_stage(session: Session, deps, analysis: Analysis, plan: Parsed
     # planner-score heuristic (use_for_ranking) does it order the planner-validated ones. Never touches `validation`.
     predictor = getattr(deps, "predictor", None)
     predictions = ranking.predict_candidates(
-        predictor if analysis.connection_id is None else None, snapshot.sql, feature_schema, baseline, [*validated, *suggested]
+        predictor if analysis.connection_id is None and analysis.engine == "postgres" else None, snapshot.sql, feature_schema, baseline, [*validated, *suggested]
     )
     model_orders = bool(predictions) and bool(getattr(predictor, "use_for_ranking", False))
     if model_orders:

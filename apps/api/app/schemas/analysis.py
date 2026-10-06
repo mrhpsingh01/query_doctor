@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 from querydoctor.plan_parser import parse_explain
@@ -10,12 +10,22 @@ from app.models import Analysis
 from app.schemas.benchmark import BenchmarkOut
 
 
+def _parse_plan(engine: str, raw):
+    """The stored raw plan as a ParsedPlan, by engine."""
+    if engine == "mongodb":
+        from querydoctor.mongo.plan import normalize_plan
+
+        return normalize_plan(raw)
+    return parse_explain(raw)
+
+
 class AnalysisCreate(BaseModel):
     sql: str
     params: list[Any] = Field(default_factory=list)
     execute: bool = False
     project_id: int
-    connection_id: int | None = None  # a registered custom connection; None means the sample database
+    engine: Literal["postgres", "mongodb"] = "postgres"
+    connection_id: int | None = None  # a registered custom PostgreSQL connection; None means the sample database
 
 
 class AnalysisAccepted(BaseModel):
@@ -80,6 +90,7 @@ class AnalysisOut(BaseModel):
     status: str
     stage: str | None
     execute: bool
+    engine: str = "postgres"
     connection_id: int | None = None
     error: str | None
     sql: str
@@ -101,11 +112,11 @@ class AnalysisOut(BaseModel):
         plan = None
         if a.plan_json is not None:
             try:
-                plan = parse_explain(a.plan_json).model_dump()
+                plan = _parse_plan(a.engine, a.plan_json).model_dump()
             except ValueError:
                 plan = None
         return cls(
-            id=a.id, project_id=a.project_id, status=a.status, stage=a.stage, execute=a.execute, connection_id=a.connection_id, error=a.error,
+            id=a.id, project_id=a.project_id, status=a.status, stage=a.stage, execute=a.execute, engine=a.engine, connection_id=a.connection_id, error=a.error,
             sql=a.snapshot.sql, normalized_sql=a.snapshot.normalized_sql, fingerprint=a.snapshot.fingerprint,
             params=a.snapshot.params, plan=plan, planning_time_ms=a.planning_time_ms,
             execution_time_ms=a.execution_time_ms,
@@ -120,6 +131,7 @@ class AnalysisSummary(BaseModel):
     id: int
     status: str
     execute: bool
+    engine: str = "postgres"
     sql: str
     fingerprint: str
     execution_time_ms: float | None
@@ -133,7 +145,7 @@ class AnalysisSummary(BaseModel):
         order = ["benchmark_validated", "planner_validated", "suggested"]
         states = {c.validation for c in a.candidates if not c.dropped}
         return cls(
-            id=a.id, status=a.status, execute=a.execute, sql=a.snapshot.sql, fingerprint=a.snapshot.fingerprint,
+            id=a.id, status=a.status, execute=a.execute, engine=a.engine, sql=a.snapshot.sql, fingerprint=a.snapshot.fingerprint,
             execution_time_ms=a.execution_time_ms, finding_count=len(a.findings),
             critical_count=sum(1 for f in a.findings if f.severity == "critical"),
             best_validation=next((s for s in order if s in states), None), created_at=a.created_at,

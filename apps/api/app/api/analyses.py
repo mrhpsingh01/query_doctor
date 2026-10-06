@@ -5,9 +5,7 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import Response
 from querydoctor.benchmark import render_report, render_report_html
-from querydoctor.db import ParamMismatch
-from querydoctor.db.explain import check_params
-from querydoctor.safety import ValidationError, validate_query
+from querydoctor.safety import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -15,6 +13,7 @@ from app.api.sse import sse_stream
 from app.deps import get_session
 from app.models import Analysis, AuditEvent, Project, QuerySnapshot
 from app.services import connections as svc_connections
+from app.services.adapters import adapter_for
 from app.schemas.analysis import AnalysisAccepted, AnalysisCreate, AnalysisOut, AnalysisSummary
 from app.services.deletion import delete_everything
 from app.services.pipeline import TERMINAL_STATUSES, emit
@@ -40,15 +39,12 @@ def create_analysis(body: AnalysisCreate, request: Request, session: Session = D
     state = request.app.state
     if session.get(Project, body.project_id) is None:
         raise HTTPException(404, detail="project not found")
+    if body.engine != "postgres" and body.connection_id is not None:
+        raise _422("not_supported", "Custom connections are only available for PostgreSQL.")
     try:
-        vq = validate_query(body.sql, max_chars=state.settings.max_sql_chars)
-        check_params(body.params)
+        vq = adapter_for(state.pipeline_deps, body.engine).validate_query(body.sql, body.params, max_chars=state.settings.max_sql_chars)
     except ValidationError as exc:
         raise _422(exc.code, exc.message) from exc
-    except ParamMismatch as exc:
-        raise _422("param_mismatch", str(exc)) from exc
-    if len(body.params) != vq.param_count:
-        raise _422("param_mismatch", f"query uses {vq.param_count} parameter(s) but {len(body.params)} were supplied")
 
     if body.connection_id is not None:
         svc_connections.require_enabled(state.settings)
@@ -56,11 +52,12 @@ def create_analysis(body: AnalysisCreate, request: Request, session: Session = D
         svc_connections.guard(state.settings, connection.host, connection.port, state.connection_resolver)  # re-checked on every use
 
     snapshot = QuerySnapshot(
-        project_id=body.project_id, sql=vq.sql, normalized_sql=vq.normalized_sql, fingerprint=vq.fingerprint,
+        project_id=body.project_id, engine=body.engine, sql=vq.sql, normalized_sql=vq.normalized_sql, fingerprint=vq.fingerprint,
         params=list(body.params),
     )
     analysis = Analysis(
-        project_id=body.project_id, snapshot=snapshot, status="queued", execute=body.execute, connection_id=body.connection_id
+        project_id=body.project_id, snapshot=snapshot, status="queued", execute=body.execute, engine=body.engine,
+        connection_id=body.connection_id,
     )
     session.add(analysis)
     session.flush()

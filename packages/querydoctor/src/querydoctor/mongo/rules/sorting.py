@@ -17,8 +17,9 @@ class BlockingSort:
         t, out = ctx.thresholds, []
         for node in ctx.nodes("SORT", "SORT_SIMPLE", "SORT_DEFAULT"):
             used_disk = bool(node.raw.get("usedDisk"))
-            if ctx.executed and node.actual_rows is not None:
-                docs, confidence = int(node.actual_rows), 0.95
+            fed = [c.actual_rows for c in node.children if c.actual_rows is not None]  # a sort with a limit returns few but reads many
+            if ctx.executed and (fed or node.actual_rows is not None):
+                docs, confidence = int(max(fed) if fed else node.actual_rows), 0.95
             else:
                 docs, confidence = ctx.count_of(ctx.collection), 0.6
                 if docs is None:

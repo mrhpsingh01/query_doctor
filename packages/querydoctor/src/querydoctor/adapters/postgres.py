@@ -62,9 +62,9 @@ class PostgresAdapter:
         table_rows = {name: info.row_estimate for name, info in schema.tables.items()}
         return self._scorer(conn, vq.sql, params, baseline, candidates, table_rows)
 
-    def benchmark(self, dsn: str, vq, params: Sequence[Any], candidate_ddl: str, config, *, on_progress, cancelled, template: str | None = None):
+    def benchmark(self, dsn: str, vq, params: Sequence[Any], candidate, config, *, on_progress, cancelled, template: str | None = None):
         extra = {} if template is None else {"template": template}  # the default template is the sample database
-        return self._benchmark(dsn, vq.sql, params, candidate_ddl, config, on_progress=on_progress, cancelled=cancelled, **extra)
+        return self._benchmark(dsn, vq.sql, params, candidate.ddl, config, on_progress=on_progress, cancelled=cancelled, **extra)
 
     def collect_workload(self, conn, limit: int):
         return merge_statements(read_statements(conn, limit))

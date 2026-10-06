@@ -54,9 +54,10 @@ def create_app(
         max_plan_bytes=settings.max_plan_bytes,
         thresholds=settings.diagnosis_thresholds(),
         predictor=Predictor.load(settings.model_dir),
+        mongo_target_uri=settings.mongo_target_uri,
     )
 
-    bench_deps = benchmark_deps or BenchmarkDeps(bench_dsn=settings.bench_dsn, bus=bus)
+    bench_deps = benchmark_deps or BenchmarkDeps(bench_dsn=settings.bench_dsn, bus=bus, mongo_bench_uri=settings.mongo_bench_uri)
 
     in_process = settings.redis_url.startswith("memory://")
 

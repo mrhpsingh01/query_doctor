@@ -37,7 +37,7 @@ class DatabaseAdapter(Protocol):
     def test_candidates(self, conn: Any, vq: Any, params: Sequence[Any], baseline: Any, candidates: Sequence[Any], schema: Any) -> list[Any]:
         """Planner-only testing of candidates (engines without hypothetical indexes return untested candidates)."""
 
-    def benchmark(self, dsn: str, vq: Any, params: Sequence[Any], candidate_ddl: str, config: Any, *, on_progress: Callable[[str], None], cancelled: Callable[[], bool], template: str | None = None) -> Any: ...
+    def benchmark(self, dsn: str, vq: Any, params: Sequence[Any], candidate: Any, config: Any, *, on_progress: Callable[[str], None], cancelled: Callable[[], bool], template: str | None = None) -> Any: ...
 
     def collect_workload(self, conn: Any, limit: int) -> tuple[list[Any], int]:
         """``(workload queries, skipped statement count)``."""

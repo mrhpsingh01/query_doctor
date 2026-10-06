@@ -142,7 +142,8 @@ def run_mongo_benchmark(
             after_samples[0].execution_ms / after.median_ms if after.median_ms else 1.0,
         )
         match, notes = compare_outputs(check_before, check_after, None, None)
-        index_used = any(n.index_name == index_name for n in iter_nodes(after_plan.root))
+        nodes = list(iter_nodes(after_plan.root))
+        index_used = any(n.index_name == index_name for n in nodes) or any(index_name in (n.raw.get("indexesUsed") or []) for n in nodes)  # a $lookup reports the indexes it used
         warnings = reliability_warnings(before, after, config=config, checksum_match=match, first_run_ratio=first_ratio) + notes
         if not index_used:
             warnings.append("The new index was not used by the query's final plan, so any speed difference is not attributable to it.")

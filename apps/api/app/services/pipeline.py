@@ -43,6 +43,10 @@ class PipelineDeps:
     candidate_stage: Callable | None = field(default=None)  # defaults to the real candidate stage
     connection_dsn: Callable | None = None  # (session, analysis) -> DSN of the analysis's custom connection (guarded)
     hypopg_available: Callable = field(default=lambda conn: _hypopg_available(conn))  # is HypoPG installed on the target?
+    mongo_target_uri: str = ""  # read-only MongoDB user on the sample database
+    mongo_connect: Callable | None = None  # (uri) -> context manager yielding a pymongo Database
+    mongo_explain: Callable | None = None
+    mongo_collect_schema: Callable | None = None
     predictor: object | None = None  # querydoctor.ranking.Predictor (or a test double); None means heuristic ordering only
     extra: dict = field(default_factory=dict)
 
@@ -74,6 +78,15 @@ def dsn_for(session: Session, deps: PipelineDeps, analysis: Analysis) -> str:
     if deps.connection_dsn is None:
         raise ValueError("custom connections are not configured")
     return deps.connection_dsn(session, analysis)
+
+
+def open_target(session: Session, deps: PipelineDeps, analysis: Analysis):
+    """A context manager yielding the connection an analysis runs against (PostgreSQL connection or MongoDB database)."""
+    if analysis.engine == "mongodb":
+        from querydoctor.mongo.schema import mongo_connect
+
+        return (deps.mongo_connect or mongo_connect)(deps.mongo_target_uri)
+    return deps.connect(dsn_for(session, deps, analysis))
 
 
 class _Stop(Exception):
@@ -163,9 +176,10 @@ def _run(session: Session, deps: PipelineDeps, analysis: Analysis) -> None:
     vq = adapter.validate_query(snapshot.sql, snapshot.params, max_chars=max(len(snapshot.sql), 1))
 
     _stage(session, deps, analysis, "collecting_schema")
-    with deps.connect(dsn_for(session, deps, analysis)) as conn:
-        analysis.backend_pid = conn.info.backend_pid
-        session.commit()
+    with open_target(session, deps, analysis) as conn:
+        if analysis.engine == "postgres":  # lets the API cancel the running statement
+            analysis.backend_pid = conn.info.backend_pid
+            session.commit()
         schema = adapter.collect_schema(conn, vq)
         analysis.schema_json = schema.model_dump()
         session.commit()
