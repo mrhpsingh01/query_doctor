@@ -73,7 +73,7 @@ read-only; migrations execute only in disposable databases.
 
 Outcomes: `OPTIMIZED`, `PASS`, `REGRESSION_DETECTED`, `INSUFFICIENT_EVIDENCE`. Decision order: a content difference is a regression; fewer than 5 runs or no baseline signal is insufficient; a change of 10% or more
 is a regression only if the new median exceeds the old p95, and an improvement only if the new p95 is below the old median (separated distributions beat a high CV);
-if both p95 values are under a 1 ms noise floor the result is a pass; otherwise CV above 25%, missing evidence, or a failed migration/export prevents a pass.
+For overlapping distributions, CV above 25% prevents a pass even when all runs take less than 1 ms. Missing evidence or a failed migration/export also prevents a pass.
 Content differences are regressions regardless of speed. Exit codes: 0 pass/optimized, 1 regression, 2 insufficient evidence.
 
 Optimization reuses diagnosis, HypoPG and the production isolated benchmark runner for up to three index candidates.
@@ -87,3 +87,7 @@ known to the exporter. Nothing is applied to a source database.
 Fork PRs retain artifacts but cannot comment with a read-only token. The workflow does not execute PR code through
 `pull_request_target`. To demonstrate a regression, add `DROP INDEX orders_customer_created;` to the configured
 candidate migration history on a branch. Run on a quiet host; noisy evidence deliberately fails closed.
+
+The hosted workflow uses Ubuntu 24.04 and the maintained Node 24 action versions documented by
+[checkout](https://github.com/actions/checkout), [setup-python](https://github.com/actions/setup-python),
+[upload-artifact](https://github.com/actions/upload-artifact) and [github-script](https://github.com/actions/github-script).

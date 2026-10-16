@@ -22,9 +22,6 @@ from querydoctor.diagnosis import Thresholds
 from querydoctor.plan_parser import iter_nodes, parse_explain
 
 
-NOISE_FLOOR_MS = 1.0  # below this, every run of both sides is dominated by scheduler / cache jitter
-
-
 def classify(before, after, identical: bool) -> str:
     """Different output is always a regression. Otherwise a change counts only when it is *separated*: the new typical run
     lies beyond the old slow end (regression) or the new slow end beats the old typical run (improvement). Run-to-run
@@ -39,8 +36,6 @@ def classify(before, after, identical: bool) -> str:
         return "REGRESSION_DETECTED"
     if change <= -10 and after.p95_ms < before.median_ms:
         return "OPTIMIZED"
-    if max(before.p95_ms, after.p95_ms) < NOISE_FLOOR_MS:
-        return "PASS"  # no separated change, and the whole query is faster than the measurement can resolve
     if max(before.cv, after.cv) > 0.25:
         return "INSUFFICIENT_EVIDENCE"
     return "PASS" if abs(change) < 10 else "INSUFFICIENT_EVIDENCE"

@@ -16,13 +16,14 @@ Reviewed 16 October 2026 against the four-phase product brief. This records what
 
 ## Verification
 
-- Full Python suite: 1,306 passed, one parser-compatibility case skipped; zero failures/errors (1,307 collected). PostgreSQL, MongoDB, API/worker and isolated sandbox integration tests were included with the local stack available.
+- Full Python suite: 1,309 passed, one parser-compatibility case skipped; zero failures/errors (1,310 collected, 421.9 seconds). PostgreSQL, MongoDB, API/worker and isolated sandbox integration tests were included with the rebuilt local stack required. Fourteen focused CI tests also pass after removing a permissive sub-millisecond noise exception.
 - Frontend: 216 unit tests pass in 29 files. TypeScript production builds pass in both full local and Vercel showcase modes; changed-file ESLint and two offline production-browser checks pass.
 - The Vercel-mode browser test blocks all `/api/` traffic, exercises the four-card/paste navigation and recorded Workload queue, and verifies live-only routes cannot mount the backend UI.
 - Offline showcase selection measured 78.8–84.0 ms through two animation frames on this machine. This is a local interaction measurement, not a guarantee for initial page download or every browser/device.
 - A temporary Git repository with a real dropped-index candidate produced `REGRESSION_DETECTED` and matching output checksums against disposable PostgreSQL 16/HypoPG. The generated SQL, Prisma and Alembic artifacts were checked.
 - Recorded showcase payloads are checked against the same backend verification gate. SHA-256 checks retain duplicates, are order independent, and include row/document counts. A disabled MongoDB internal-function capability fails the benchmark instead of granting validation.
 - Git diff whitespace and publishable-source secret checks passed. Test artifacts, environments and credentials are excluded from Git.
+- The rebuilt local batch flow completed three analyses and four independently queued isolated benchmarks, all with matching SHA-256 output checks. The worker registers separate batch/item/benchmark tasks.
 
 ## Remaining configuration for another application
 
@@ -34,4 +35,6 @@ Generated Alembic files need the application's real `down_revision`; rollback po
 
 ## Publication
 
-Target repository: `mrhpsingh01/query_doctor`. Target Vercel team: `mrhpsingh01s-projects`, new frontend project `query-doctor`, root directory `apps/web`. Publication and a hosted PR-bot exercise are tracked separately from local verification; their final URLs and results will be recorded here after completion.
+Source is published to [mrhpsingh01/query_doctor](https://github.com/mrhpsingh01/query_doctor). The deliberately unmergeable [draft regression demonstration, PR #1](https://github.com/mrhpsingh01/query_doctor/pull/1), ran the workflow on GitHub's hosted runner: 0.094 ms → 9.502 ms, matching output, `REGRESSION_DETECTED`. The bot posted its report with a measured index experiment (9.369 ms → 0.053 ms), and the enforcement step failed as intended. SQL/Alembic/Prisma evidence artifacts were uploaded. The demo must not be merged.
+
+Target Vercel team: `mrhpsingh01s-projects`, new frontend project `query-doctor`, root directory `apps/web`. The repository-only Vercel GitHub app installation was explicitly approved; the deployment URL will be recorded here after the first build completes.
