@@ -24,6 +24,7 @@ Reviewed 16 October 2026 against the four-phase product brief. This records what
 - Recorded showcase payloads are checked against the same backend verification gate. SHA-256 checks retain duplicates, are order independent, and include row/document counts. A disabled MongoDB internal-function capability fails the benchmark instead of granting validation.
 - Git diff whitespace and publishable-source secret checks passed. Test artifacts, environments and credentials are excluded from Git.
 - The rebuilt local batch flow completed three analyses and four independently queued isolated benchmarks, all with matching SHA-256 output checks. The worker registers separate batch/item/benchmark tasks.
+- `bash run_demo.sh` was exercised through Git Bash against retained demo volumes: build, seed checks, API/web health and the exact ready banner/three-click path all completed successfully. This was a warm-data run, not a fresh full-scale seed.
 
 ## Remaining configuration for another application
 
@@ -37,4 +38,8 @@ Generated Alembic files need the application's real `down_revision`; rollback po
 
 Source is published to [mrhpsingh01/query_doctor](https://github.com/mrhpsingh01/query_doctor). The deliberately unmergeable [draft regression demonstration, PR #1](https://github.com/mrhpsingh01/query_doctor/pull/1), ran the workflow on GitHub's hosted runner: 0.094 ms → 9.502 ms, matching output, `REGRESSION_DETECTED`. The bot posted its report with a measured index experiment (9.369 ms → 0.053 ms), and the enforcement step failed as intended. SQL/Alembic/Prisma evidence artifacts were uploaded. The demo must not be merged.
 
-Target Vercel team: `mrhpsingh01s-projects`, new frontend project `query-doctor`, root directory `apps/web`. The repository-only Vercel GitHub app installation was explicitly approved; the deployment URL will be recorded here after the first build completes.
+The repeat run with maintained Node 24 Actions and the stricter noise policy again detected the regression (0.108 ms → 10.210 ms), measured its fix (9.933 ms → 0.055 ms), and updated the same bot comment rather than posting a duplicate. The performance job failed as expected; Vercel preview checks passed. [Repeat workflow run](https://github.com/mrhpsingh01/query_doctor/actions/runs/38868645274). This verifies workflow enforcement; making the check mandatory for merges is a separate repository branch-protection policy.
+
+The [public zero-setup showcase](https://query-doctor-omega.vercel.app/) is deployed in Vercel team `mrhpsingh01s-projects`, project `query-doctor`, root directory `apps/web`, connected to GitHub `main`. The repository-only Vercel GitHub app installation was explicitly approved. The deployed scan card, rejected-index ladder, paste parser and recorded Workload queue were exercised in the browser; no application console errors were observed. Production uses recorded/static data and browser-only parsing, so no database/API secrets are configured.
+
+Anonymous HTTP requests to both the landing page and `/workload` returned 200. No further account details are needed to use the public showcase. Custom domains and mandatory merge-check rules are optional owner policies; an application's own migration/seed/workload profile still needs its representative inputs as described above.

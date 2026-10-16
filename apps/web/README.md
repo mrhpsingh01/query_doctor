@@ -3,7 +3,7 @@
 From this directory run `npm ci` then `npm run dev`. Open http://localhost:3000.
 The landing page, Paste EXPLAIN Output tab and the recorded Workload tab (a real capture with its Ranked Fix Queue) need no API, database, Redis or worker.
 For Vercel, set the Root Directory to `apps/web`; `vercel.json` selects the Next.js preset. No environment variables are required (see `.env.example`).
-No deployment URL is configured in this repository.
+Public showcase: [query-doctor-omega.vercel.app](https://query-doctor-omega.vercel.app/), deployed under `mrhpsingh01s-projects/query-doctor` from `main`.
 
 The four cards replay real PostgreSQL 16 / MongoDB 7 pipeline captures in `lib/showcaseCaptured.json`.
 Regenerate with `scripts/capture_showcase.py` from the repository root against disposable instances.
@@ -20,7 +20,7 @@ explained in `next.config.ts`. The full stack is started from the repository roo
 
 
 Vercel automatically defaults to `NEXT_PUBLIC_QD_DEMO_MODE=true`. This restricts navigation to the showcase,
-paste analyzer and local setup guide; backend-only routes redirect home and live-query links cannot start API calls.
+paste analyzer, recorded Workload and local setup guide; backend-only routes redirect home and live-query links cannot start API calls.
 Set the variable explicitly to `false` when deploying a fully hosted API. To verify the Vercel mode locally:
 
 ```bash

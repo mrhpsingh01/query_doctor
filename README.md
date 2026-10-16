@@ -11,7 +11,7 @@ Inspect execution plans, validate hypothetical indexes in memory, and benchmark 
 | MongoDB foreign lookup | 487.000 ms | 3.000 ms | 7 runs, row count + SHA-256 match |
 | Rejected index (stale statistics) | 0.852 ms | 0.850 ms | Planner favored it; benchmark rejected it |
 
-**Live Demo:** the zero-backend showcase (four recorded cases, paste-an-EXPLAIN, and a recorded Workload with its Ranked Fix Queue) deploys to Vercel with no database: [deploy steps](apps/web/README.md). Locally: [http://localhost:3000](http://localhost:3000). Once deployed, put your public URL here. · [CI regression gate](docs/ci-regression-gate.md)
+**[Live Zero-Setup Showcase](https://query-doctor-omega.vercel.app/)** · Four recorded cases, paste-an-EXPLAIN, and a recorded [Ranked Fix Queue](https://query-doctor-omega.vercel.app/workload). No database setup. · [CI regression gate](docs/ci-regression-gate.md)
 The 60-second GIF is recorded from the app.
 
 ## Try it without Docker
@@ -65,7 +65,7 @@ migration exporters, and refuses a pass for changed database files outside confi
 covers the sample schema; [configure an application profile](docs/ci-regression-gate.md) for another schema/workload.
 
 [See the bot catch a deliberate index-drop regression on a real PR](https://github.com/mrhpsingh01/query_doctor/pull/1#issuecomment-6210487368)
-(0.094 ms → 9.502 ms, identical output, measured index fix). This draft demonstrates a correctly failing gate and must not be merged.
+(0.108 ms → 10.210 ms on the latest verification run, identical output, measured index fix). This draft demonstrates a correctly failing gate and must not be merged.
 The [implementation audit](docs/implementation-audit.md) records test evidence and application-specific configuration limits.
 
 **Planner vs. ML ranking:** on the repository's held-out query shapes, the planner heuristic ties the learned models
