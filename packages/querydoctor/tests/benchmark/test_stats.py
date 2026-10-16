@@ -152,3 +152,8 @@ def test_high_variance_alone_does_not_block_validation_when_the_runs_are_clearly
     )
     assert noisy_but_separated.after.cv > 0.25
     assert awards_validation(noisy_but_separated) is True
+
+def test_too_few_runs_or_different_row_counts_never_award_validation():
+    from querydoctor.benchmark.models import RunSample
+    assert not awards_validation(result(before=summarize([10] * 4)))
+    assert not awards_validation(result(before_samples=[RunSample(execution_ms=10,rows=2)], after_samples=[RunSample(execution_ms=2,rows=3)]))

@@ -6,13 +6,14 @@ import { ShareBar } from "./ShareBar";
 const NUM = "px-3 py-2 text-right font-mono text-[13px] tabular-nums";
 const HEAD = "px-3 py-2 text-xs font-semibold text-ink-2";
 
-export function analyzeHref(sql: string, engine: Engine = "postgres"): string {
+export function analyzeHref(sql: string, engine: Engine = "postgres", sourceConnectionId: number | null = null): string {
   const base = `/analyses/new?sql=${encodeURIComponent(sql)}`;
-  return engine === "postgres" ? base : `${base}&engine=${engine}`;
+  const withEngine = engine === "postgres" ? base : `${base}&engine=${engine}`;
+  return sourceConnectionId === null ? withEngine : `${withEngine}&connection_id=${sourceConnectionId}`;
 }
 
 /** The workload ranked by total database time (mean x calls): the order to optimize in. */
-export function QueryTable({ queries, engine = "postgres" }: { queries: WorkloadQuery[]; engine?: Engine }) {
+export function QueryTable({ queries, engine = "postgres", sourceConnectionId = null, staticMode = false }: { queries: WorkloadQuery[]; engine?: Engine; sourceConnectionId?: number | null; staticMode?: boolean }) {
   if (queries.length === 0) return <p className="text-sm text-ink-2">No queries in this snapshot.</p>;
   return (
     <div className="overflow-x-auto rounded-md border border-line bg-surface">
@@ -36,11 +37,11 @@ export function QueryTable({ queries, engine = "postgres" }: { queries: Workload
               className={`${HEAD} text-right`}
               title={
                 engine === "mongodb"
-                  ? "Estimated as mean + 1.645 standard deviations of the profiled calls. The profiler records whole milliseconds; a measured p95 comes only from a QueryDoctor benchmark."
+                  ? "Observed from the bounded profiler sample when individual durations are available. The profiler records whole milliseconds; this is not complete production history."
                   : "Estimated as mean + 1.645 standard deviations. pg_stat_statements keeps no percentiles; a measured p95 comes only from a QueryDoctor benchmark."
               }
             >
-              Estimated p95
+              {engine === "mongodb" ? "Sample p95" : "Estimated p95"}
             </th>
             <th scope="col" className={`${HEAD} text-right`}>
               Total time
@@ -58,22 +59,24 @@ export function QueryTable({ queries, engine = "postgres" }: { queries: Workload
             <tr key={q.fingerprint} className="hover:bg-surface-2">
               <td className={`${NUM} text-ink-2`}>{q.rank}</td>
               <td className="max-w-[420px] px-3 py-2">
-                <Link href={`/workload/${q.fingerprint}`} title={q.normalized_sql} className="block truncate font-mono text-[13px] text-accent hover:underline">
-                  {q.normalized_sql}
-                </Link>
+                {staticMode
+                  ? <span title={q.normalized_sql} className="block truncate font-mono text-[13px]">{q.normalized_sql}</span>
+                  : <Link href={`/workload/${q.fingerprint}${sourceConnectionId !== null ? `?connection_id=${sourceConnectionId}` : ""}`} title={q.normalized_sql} className="block truncate font-mono text-[13px] text-accent hover:underline">
+                    {q.normalized_sql}
+                  </Link>}
                 {q.tables.length > 0 && <span className="text-xs text-ink-2">{q.tables.join(", ")}</span>}
               </td>
               <td className={NUM}>{formatNumber(q.calls)}</td>
               <td className={NUM}>{formatMs(q.mean_ms)}</td>
-              <td className={NUM}>{formatMs(q.p95_est_ms)}</td>
+              <td className={NUM}>{formatMs(engine === "mongodb" ? (q.p95_observed_ms ?? q.p95_est_ms) : q.p95_est_ms)}</td>
               <td className={NUM}>{formatMs(q.total_ms)}</td>
               <td className="px-3 py-2">
                 <ShareBar share={q.share} />
               </td>
               <td className="px-3 py-2 text-right">
-                <Link href={analyzeHref(q.sample_sql, engine)} className="text-sm font-medium text-accent hover:underline">
+                {!staticMode && <Link href={analyzeHref(q.sample_sql, engine, sourceConnectionId)} className="text-sm font-medium text-accent hover:underline">
                   Analyze
-                </Link>
+                </Link>}
               </td>
             </tr>
           ))}

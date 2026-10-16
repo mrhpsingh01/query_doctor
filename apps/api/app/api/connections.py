@@ -30,12 +30,15 @@ class ConnectionCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str = Field(min_length=1, max_length=200)
+    engine: Literal["postgres", "mongodb"] = "postgres"
     host: str = Field(min_length=1, max_length=255)
     port: int = Field(default=5432, ge=1, le=65535)
     database: str = Field(min_length=1, max_length=200)
     username: str = Field(min_length=1, max_length=200)
     password: str = Field(min_length=1, max_length=1000, repr=False)
     sslmode: Literal["prefer", "require"] = "prefer"
+    tls: bool = True  # MongoDB only; TLS certificate must cover the checked IP address
+    auth_database: str | None = Field(default=None, max_length=200)
 
 
 class ConnectionOut(BaseModel):
@@ -47,11 +50,14 @@ class ConnectionOut(BaseModel):
     project_id: int
     name: str
     kind: str
+    engine: str
     host: str
     port: int
     database: str
     username: str
     sslmode: str
+    tls: bool
+    auth_database: str | None
 
 
 def try_connect(*, host: str, port: int, database: str, username: str, password: str) -> tuple[bool, str]:
@@ -65,6 +71,8 @@ def try_connect(*, host: str, port: int, database: str, username: str, password:
 
 @router.post("/test")
 def test_connection(body: ConnectionTest, request: Request):
+    if request.app.state.settings.auth_tokens:
+        raise HTTPException(403, detail="Use a registered project connection for customer sources.")
     if not connection_allowed(body.host, body.port):
         raise HTTPException(400, detail="This release only connects to QueryDoctor's sample databases.")
     tester = getattr(request.app.state, "connection_tester", try_connect)
@@ -86,10 +94,12 @@ def create_connection(project_id: int, body: ConnectionCreate, request: Request,
     state = request.app.state
     svc.require_enabled(state.settings)
     _project(session, project_id)
-    svc.guard(state.settings, body.host, body.port, state.connection_resolver)  # refuse internal targets before storing anything
+    svc.guard(state.settings, body.host, body.port, state.connection_resolver, engine=body.engine)
     row = Connection(
-        project_id=project_id, name=body.name, kind="custom", host=body.host.strip().lower(), port=body.port, database=body.database,
-        username=body.username, encrypted_password=encrypt(body.password, key=state.settings.secret_key or None), sslmode=body.sslmode,
+        project_id=project_id, name=body.name, kind="custom", engine=body.engine,
+        host=body.host.strip().lower(), port=body.port, database=body.database,
+        username=body.username, encrypted_password=encrypt(body.password, key=state.settings.secret_key or None),
+        sslmode=body.sslmode, tls=body.tls, auth_database=body.auth_database,
     )
     session.add(row)
     session.flush()

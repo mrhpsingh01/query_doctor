@@ -1,42 +1,74 @@
-# QueryDoctor
+# QueryDoctor: Find out why a database query is slow—and measure whether a fix actually works.
 
-**An evidence-based PostgreSQL and MongoDB performance investigator.** Give it a slow `SELECT` (or a MongoDB `find` /
-`aggregate`). It reads the execution plan, finds the bottleneck, tests index ideas without creating them where the
-database allows it, benchmarks the promising ones in an isolated copy of the data, and recommends only what the
-measurements support.
+Inspect execution plans, validate hypothetical indexes in memory, and benchmark candidates in isolated sandboxes with cryptographic output verification.
 
-> The slow query took 8 ms because PostgreSQL scanned all 100,000 orders and threw away 97.2% of them. A composite
-> index on `(customer_id, created_at)` turns the sequential scan into an index scan. Across 7 runs the median fell to
-> 0.32 ms (95.8% faster), with identical output.
+![QueryDoctor Demo](docs/demo.gif)
 
-That sentence is generated from measurements, not from a language model guessing. A local model (Ollama) may optionally
-draft explanations, but every number it writes is checked against the measurements and a deterministic template is the
-fallback; see [Explanations](#explanations-your-own-databases-privacy). No model ever changes an evidence level.
+| Example | Before | After | Evidence |
+|---|---:|---:|---|
+| 250k-row selective scan | 9.101 ms | 0.070 ms | 7 runs, row count + SHA-256 match |
+| External sort spill | 35.501 ms | 2.047 ms | 7 runs, row count + SHA-256 match |
+| MongoDB foreign lookup | 487.000 ms | 3.000 ms | 7 runs, row count + SHA-256 match |
+| Rejected index (stale statistics) | 0.852 ms | 0.850 ms | Planner favored it; benchmark rejected it |
 
-![Plan viewer with the slowest operator selected](docs/screenshots/02-plan-and-operator.png)
+**Live Demo:** the zero-backend showcase (four recorded cases, paste-an-EXPLAIN, and a recorded Workload with its Ranked Fix Queue) deploys to Vercel with no database: [deploy steps](apps/web/README.md). Locally: [http://localhost:3000](http://localhost:3000). Once deployed, put your public URL here. · [CI regression gate](docs/ci-regression-gate.md)
+The 60-second GIF is recorded from the app.
 
-## Try it
-
-You need Docker. From the repository root:
+## Try it without Docker
 
 ```bash
-docker compose -f infrastructure/compose.yaml up -d --build
+cd apps/web
+npm ci
+npm run dev
 ```
 
-| What | Where |
-|---|---|
-| Web app | <http://localhost:3000> |
-| API (OpenAPI docs at `/docs`) | <http://localhost:8010> |
-| Sample / benchmark PostgreSQL, metadata database, Redis | `127.0.0.1` ports 5433 / 5434 / 5435 / 6379 |
-| MongoDB 7 (sample and benchmark copies) | `127.0.0.1:27018` (`QD_MONGO_PORT`; 27018 so a MongoDB already on 27017 is left alone) |
+Open http://localhost:3000. Click any of four showcase cards or paste PostgreSQL EXPLAIN JSON/text or
+MongoDB executionStats JSON. Parsing runs locally in your browser, with no API calls or database setup.
+Pasted suggestions remain **Unverified**. Showcase cards replay complete recorded pipeline captures, including
+plans, cost comparisons, run distributions and output checks. Numbers vary by hardware. Regenerate with
+[scripts/capture_showcase.py](scripts/capture_showcase.py) against disposable instances; raw evidence is downloadable
+from each card. Both engines record row/document counts and SHA-256 output verification. MongoDB 7 uses a fixed
+internal server function; only digests leave the database. User-supplied JavaScript stays prohibited.
 
-The first start builds the images, creates three PostgreSQL 16 instances, MongoDB 7 and Redis, and loads a deterministic,
-skewed e-commerce dataset into both PostgreSQL and MongoDB (100k orders by default). Open the web app, pick **Recent
-orders for one customer**, choose **Execute with analysis**, and follow the journey below. Choose **MongoDB** on the
-New analysis page for the MongoDB catalog.
+## Full local demo: one command
 
-Use the larger demo dataset (1M orders, 3M order items, 5M events) with `QD_SCALE=full`, and set `QD_API_PORT` /
-`QD_WEB_PORT` / `QD_MONGO_PORT` if a default port is taken on your machine.
+```bash
+bash run_demo.sh                    # QD_SCALE=demo: 100k orders
+QD_SCALE=full bash run_demo.sh      # 1M orders in separate retained -full volumes
+```
+
+Requires Docker Desktop and curl (Windows: Git Bash or WSL). The script builds the stack, seeds both engines,
+keeps demo/full datasets in separate volumes, waits for API/web readiness, then prints `✅ QueryDoctor Ready at http://localhost:3000` and the golden path.
+Warm starts target a quick demo; cold image builds and full-scale seeding may take longer than two minutes.
+
+1. Click **The 97% Scan Waste**.
+2. Click the red **Seq Scan** operator in its plan graph.
+3. Click **Full recorded evidence** to inspect timing distributions and SHA-256 verification.
+
+For a fresh measurement, open **Live query runner**, pick a sample, choose **Execute with analysis**, then approve
+an index benchmark. Workload → **Analyze top 5 & approve isolated
+benchmarks** runs the busiest replayable PostgreSQL sample queries and consolidates qualifying indexes into
+a ranked fix queue. Customer-source automatic benchmarking remains disabled; use an explicitly seeded CI database.
+Daily savings require a known capture window and estimate execution time, not CPU time.
+
+## Engineering deep dive
+
+**Verification ladder:** Suggested → Planner-Validated (HypoPG) → Benchmark-Validated (isolated clones and matching
+output). HypoPG changes only planner estimates. Benchmark validation requires at least 10% improvement, indexed p95
+below baseline median, matching output, and actual index use. MongoDB skips HypoPG because it has no hypothetical indexes.
+
+**CI/CD gate:** baseline schema plus deterministic seeds are cloned, candidate migrations applied, and workload runs
+alternated to reduce drift bias. Row-count/digest mismatches fail regardless of latency; noisy or missing evidence
+cannot pass. Reports include medians, variability, planner comparisons and migration snippets. The supplied workflow
+compares exact PR base/head Git revisions using [.querydoctor/ci.json](.querydoctor/ci.json), supports offline native
+migration exporters, and refuses a pass for changed database files outside configured coverage. The checked-in profile
+covers the sample schema; [configure an application profile](docs/ci-regression-gate.md) for another schema/workload.
+
+**Planner vs. ML ranking:** on the repository's held-out query shapes, the planner heuristic ties the learned models
+at NDCG@3 ≈ 0.986. The best learned gain is +0.001 (90% interval −0.002 to +0.004), insufficient to replace the planner.
+This is evidence of no demonstrated ML advantage on this dataset, not a universal claim that PostgreSQL always wins.
+LightGBM predictions remain advisory. Optional LLM explanations are grounded in recorded metrics, checked against
+facts, and fall back to deterministic templates. See [the evaluation](docs/ml-evaluation.md).
 
 ## The journey
 
@@ -72,8 +104,10 @@ as JSON, with `{"$param": 1}` marking values:
 * **Validated before anything runs.** Only reads: stages are allowlisted, `$where` / `$function` / `$accumulator` /
   `$out` / `$merge` are refused at any depth (including inside `$lookup` sub-pipelines), and depth, size, limit and
   regex length are capped. Commands carry `maxTimeMS` and run as a read-only user.
-* **Plans are measured, not estimated.** MongoDB has no cost model, so a plan node shows *documents examined, documents
-  returned* and the amplification ("500k examined for 20 returned: 25k× per result"), never an estimate.
+* **Plan evidence is labeled by mode.** A planner-only MongoDB explain shows the chosen operators. When the user opts
+  into execution statistics, plan nodes can show *documents examined, documents returned* and amplification ("500k
+  examined for 20 returned: 25k× per result"). `explain()` bypasses the plan cache, so these figures are not live-workload
+  latency measurements.
 * **Ten MongoDB rules** ([catalog](docs/rule-catalog.md#mongodb-rules)): collection scans, scan and key amplification,
   blocking sorts, compound-index field order, unbounded `$group`, `$lookup` into unindexed fields, unselective and
   redundant indexes, and a `$match` that could run earlier.
@@ -82,7 +116,7 @@ as JSON, with `{"$param": 1}` marking values:
   benchmark measures it.
 * **Benchmarks run in a throwaway database** (`bench_<12 hex>`) on the same server: the touched collections and their
   existing indexes are copied with `$out`, the real index is built there, and the query is timed before and after. The
-  result checksum is computed inside the database (a count and an order-insensitive hash), so no document leaves it.
+  SHA-256 row digests are computed inside the database; the worker folds sorted digests and a count, so no result document leaves it.
   The sandbox is always dropped, and at most two run at once. The sample data is only ever read.
 * **Workload** reads the profiler (`system.profile`, level 2 in the sample) and ranks query shapes the same way. The
   profiler records whole milliseconds, so a sub-millisecond query shows 0 ms and cannot top the ranking however often
@@ -128,9 +162,11 @@ with `python -m querydoctor.lab.dataset_gen` (measures candidates; resumable) an
   To use a local model, install [Ollama](https://ollama.com), pull a model (for example `ollama pull llama3.1`), and start
   the stack with `QD_OLLAMA_MODEL=llama3.1` (the API reaches the host's Ollama at `http://host.docker.internal:11434`;
   override with `QD_OLLAMA_URL`). With no model set, or if Ollama is down or slow, the template answers and says why.
-* **Your own PostgreSQL databases** can be registered in Settings once an operator sets `QD_ALLOW_CUSTOM_CONNECTIONS=true`
-  (off by default). Hosts are checked against loopback, link-local, metadata and private ranges, DNS rebinding is
-  closed, and passwords are encrypted and never shown. See [docs/security.md](docs/security.md).
+* **Your own PostgreSQL and MongoDB sources** can be registered once an operator sets `QD_ALLOW_CUSTOM_CONNECTIONS=true`
+  (off by default). Deployed customer mode requires bearer tokens, project membership, and a Fernet key. Hosts are checked
+  against blocked address ranges at registration and use; passwords are encrypted and never shown. Customer benchmarks
+  remain blocked until isolated benchmark targets are implemented. See [docs/security.md](docs/security.md) and the
+  [customer release specification](docs/customer-release-spec.md).
 * **Privacy:** the Settings page lists what is stored, queries and parameters never reach the logs, and an analysis or
   connection can be deleted at any time.
 
@@ -255,10 +291,21 @@ docs/                   architecture, security, rule catalog, design spec and im
 ## Scope of this release
 
 PostgreSQL 16 `SELECT` queries and MongoDB 7 `find` / `aggregate` reads, one at a time, against the sample databases.
-Your own PostgreSQL databases are available behind an off-by-default flag; MongoDB is sample-only. Not included: authentication
-and sharded or replica-set MongoDB topologies. MongoDB roles cannot be scoped to database names, so the benchmark user may
+Custom PostgreSQL and standalone MongoDB source analysis is available behind an off-by-default flag. Bearer authentication
+and project membership protect the customer API; the web UI still lacks a sign-in flow. Customer benchmark targets,
+cross-workload proposal scoring, CI comparison, and sharded or replica-set MongoDB qualification remain planned work.
+MongoDB roles cannot be scoped to database names, so the demo benchmark user may
 create and drop any database on its server: use a dedicated MongoDB for benchmarks anywhere that matters
 ([docs/security.md](docs/security.md#mongodb)). The design is in [docs/superpowers/specs](docs/superpowers/specs) and the build
 plans in [docs/superpowers/plans](docs/superpowers/plans).
 
 The SQL editor (Monaco) loads from a CDN; without network access the page falls back to a plain text area.
+
+
+To regenerate the 60-second demo after starting the web app:
+
+```bash
+node scripts/rehearse_demo.mjs
+QD_DEMO_URL=http://localhost:3000 node scripts/record_demo.mjs
+python scripts/render_demo_gif.py  # optional documentation tool: requires Pillow
+```

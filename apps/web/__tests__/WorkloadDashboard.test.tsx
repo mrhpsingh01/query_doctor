@@ -5,7 +5,7 @@ import { WorkloadDashboard } from "@/components/workload/WorkloadDashboard";
 import { ApiError } from "@/lib/api";
 import { dashboard, regression } from "./fixtures";
 
-const mocks = vi.hoisted(() => ({ getWorkload: vi.fn(), importWorkload: vi.fn(), runDemoWorkload: vi.fn() }));
+const mocks = vi.hoisted(() => ({ getWorkload: vi.fn(), importWorkload: vi.fn(), importProfiler: vi.fn(), listConnections: vi.fn(), runDemoWorkload: vi.fn(), runWorkloadBatch: vi.fn() }));
 vi.mock("@/lib/api", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/api")>()), api: mocks }));
 
 const empty = () =>
@@ -18,6 +18,7 @@ const empty = () =>
 
 beforeEach(() => {
   Object.values(mocks).forEach((m) => m.mockReset());
+  mocks.listConnections.mockResolvedValue([]);
 });
 
 describe("WorkloadDashboard", () => {
@@ -37,6 +38,19 @@ describe("WorkloadDashboard", () => {
     expect(screen.getByRole("heading", { name: "Highest total time" })).toBeInTheDocument();
     expect(screen.getByText(/2 queries/i)).toBeInTheDocument();
     expect(screen.getByText(/4 skipped/i)).toBeInTheDocument();
+  });
+
+  it("imports from the selected project PostgreSQL source", async () => {
+    const user = userEvent.setup();
+    mocks.listConnections.mockResolvedValue([{ id: 9, engine: "postgres", name: "Staging source" }]);
+    mocks.getWorkload.mockResolvedValue(empty());
+    mocks.importWorkload.mockResolvedValue({ id: 2 });
+    render(<WorkloadDashboard projectId={7} />);
+    await user.selectOptions(await screen.findByRole("combobox", { name: /source/i }), "9");
+    await user.click(screen.getByRole("button", { name: /import statistics/i }));
+    expect(mocks.importWorkload).toHaveBeenCalledWith(7, "postgres", 9);
+    expect(mocks.getWorkload).toHaveBeenCalledWith(7, undefined, undefined, "postgres", 9);
+    expect(screen.queryByRole("button", { name: /generate demo traffic/i })).not.toBeInTheDocument();
   });
 
   it("imports through the API and reloads the dashboard", async () => {
@@ -126,5 +140,37 @@ describe("WorkloadDashboard", () => {
       expect(links[0].getAttribute("href")).toContain("engine=mongodb");
       expect(links[0].getAttribute("href")).toContain(encodeURIComponent('{"find": "orders", "filter": {"customer_id": 77}}'));
     });
+  });
+});
+
+
+describe("Ranked Fix Queue", () => {
+  it("shows consolidated savings and submits explicit batch approval", async () => {
+    const user = userEvent.setup();
+    const data = dashboard({ fix_queue: {
+      fixes: [{ ddl: "CREATE INDEX ON orders (customer_id)", validation: "benchmark_validated", fingerprints: ["a", "b"], analysis_ids: [9], saved_ms: 1000, hours_per_day: 4.2 }],
+      saved_hours_in_window: 4.2, hours_per_day: 4.2, note: "Estimated query execution time from isolated sample benchmarks.",
+    } });
+    mocks.getWorkload.mockResolvedValue(data);
+    mocks.runWorkloadBatch.mockResolvedValue({ analysis_ids: [10, 11], skipped: [] });
+    render(<WorkloadDashboard projectId={7} />);
+    expect(await screen.findByText(/4.2 hours of query execution time\/day/)).toBeInTheDocument();
+    expect(screen.getByText(/Helps 2 query shapes/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Inspect benchmark evidence" })).toHaveAttribute("href", "/analyses/9");
+    await user.click(screen.getByRole("button", { name: /Analyze top 5/ }));
+    expect(mocks.runWorkloadBatch).toHaveBeenCalledWith(7, data.snapshot!.id);
+    expect(await screen.findByRole("status")).toHaveTextContent("Queued 2 analyses");
+    await user.click(screen.getByRole("button", { name: "Refresh queue" }));
+    expect(mocks.getWorkload).toHaveBeenCalledTimes(2);
+  });
+
+  it("uses capture totals when the daily window is unknown", async () => {
+    mocks.getWorkload.mockResolvedValue(dashboard({ fix_queue: {
+      fixes: [{ ddl: "CREATE INDEX ON orders (customer_id)", validation: "benchmark_validated", fingerprints: ["a"], analysis_ids: [9], saved_ms: 3600, hours_per_day: null }],
+      saved_hours_in_window: .001, hours_per_day: null, note: "Capture duration unknown.",
+    } }));
+    render(<WorkloadDashboard projectId={1} />);
+    expect(await screen.findByText(/3.6 seconds over the captured workload/)).toBeInTheDocument();
+    expect(screen.getByText(/Daily rate unavailable/)).toBeInTheDocument();
   });
 });

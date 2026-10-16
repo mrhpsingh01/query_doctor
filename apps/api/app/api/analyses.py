@@ -13,6 +13,7 @@ from app.api.sse import sse_stream
 from app.deps import get_session
 from app.models import Analysis, AuditEvent, Project, QuerySnapshot
 from app.services import connections as svc_connections
+from app.security.auth import require_project
 from app.services.adapters import adapter_for
 from app.schemas.analysis import AnalysisAccepted, AnalysisCreate, AnalysisOut, AnalysisSummary
 from app.services.deletion import delete_everything
@@ -37,10 +38,7 @@ def _get_or_404(session: Session, analysis_id: int) -> Analysis:
 @router.post("", response_model=AnalysisAccepted, status_code=202)
 def create_analysis(body: AnalysisCreate, request: Request, session: Session = Depends(get_session)):
     state = request.app.state
-    if session.get(Project, body.project_id) is None:
-        raise HTTPException(404, detail="project not found")
-    if body.engine != "postgres" and body.connection_id is not None:
-        raise _422("not_supported", "Custom connections are only available for PostgreSQL.")
+    require_project(session, request, body.project_id)
     try:
         vq = adapter_for(state.pipeline_deps, body.engine).validate_query(body.sql, body.params, max_chars=state.settings.max_sql_chars)
     except ValidationError as exc:
@@ -49,7 +47,9 @@ def create_analysis(body: AnalysisCreate, request: Request, session: Session = D
     if body.connection_id is not None:
         svc_connections.require_enabled(state.settings)
         connection = svc_connections.live_connection(session, body.connection_id, body.project_id)
-        svc_connections.guard(state.settings, connection.host, connection.port, state.connection_resolver)  # re-checked on every use
+        if connection.engine != body.engine:
+            raise HTTPException(404, detail="connection not found")
+        svc_connections.guard(state.settings, connection.host, connection.port, state.connection_resolver, engine=body.engine)
 
     snapshot = QuerySnapshot(
         project_id=body.project_id, engine=body.engine, sql=vq.sql, normalized_sql=vq.normalized_sql, fingerprint=vq.fingerprint,

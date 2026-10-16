@@ -61,8 +61,8 @@ comparison are scoped to one engine.
 * **The sandbox** (`mongo/sandbox.py`) is a `bench_<12 hex>` database on the benchmark server. Slots are a TTL'd lock
   collection (two at a time; a crashed holder's slot is reclaimable), and stale sandboxes are removed by the janitor like
   PostgreSQL clones.
-* **Result equality** is a server-side `$group` of `{count, sum of $mod($toHashedIndexKey($$ROOT), 1000003)}`: order does
-  not matter and no document leaves the database.
+* **Result equality** uses server-side SHA-256 document digests, then a count and SHA-256 of the sorted
+  digests in the worker. Only hashes leave the database. Duplicate multiplicity remains significant.
 
 ## Ranking model and explanations
 

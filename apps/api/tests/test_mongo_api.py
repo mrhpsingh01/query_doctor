@@ -128,12 +128,12 @@ def test_hostile_mongodb_specs_are_refused_with_a_code_before_anything_runs(make
     assert mongo.explain_calls == [] and mongo.connected == []
 
 
-def test_an_unknown_engine_is_refused_and_custom_connections_are_postgres_only(make_client):
+def test_an_unknown_engine_is_refused_and_custom_connections_require_the_feature_flag(make_client):
     with make_client() as client:
         pid = client.get("/api/projects").json()[0]["id"]
         assert client.post("/api/analyses", json={"sql": "x", "params": [], "project_id": pid, "engine": "oracle"}).status_code == 422
         r = client.post("/api/analyses", json={"sql": SPEC.sql, "params": SPEC.params, "project_id": pid, "engine": "mongodb", "connection_id": 1})
-        assert r.status_code == 422 and r.json()["detail"]["code"] == "not_supported"
+        assert r.status_code == 403
 
 
 def test_postgresql_analyses_are_unaffected_and_history_shows_each_engine(make_client, mongo):

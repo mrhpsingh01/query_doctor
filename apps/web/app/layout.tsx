@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono, Schibsted_Grotesk } from "next/font/google";
 import Link from "next/link";
+import { LOCAL_SETUP_URL, SHOWCASE_ONLY } from "@/lib/deployment";
 import "./globals.css";
 
 const grotesk = Schibsted_Grotesk({ variable: "--font-grotesk", subsets: ["latin"] });
@@ -11,7 +12,7 @@ export const metadata: Metadata = {
   description: "Find out why a PostgreSQL query is slow, and which fix is backed by measurements.",
 };
 
-const NAV = [
+const LIVE_NAV = [
   { href: "/analyses/new", label: "New analysis" },
   { href: "/workload", label: "Workload" },
   { href: "/projects", label: "History" },
@@ -19,12 +20,19 @@ const NAV = [
   { href: "/settings", label: "Settings" },
 ];
 
+const NAV = SHOWCASE_ONLY ? [
+  { href: "/", label: "Showcases" },
+  { href: "/workload", label: "Workload" },
+  { href: "/analyses/new", label: "Paste EXPLAIN" },
+  { href: LOCAL_SETUP_URL, label: "Run locally" },
+] : LIVE_NAV;
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${grotesk.variable} ${code.variable} h-full`}>
       <body className="min-h-full flex flex-col">
         <header className="border-b border-line bg-surface">
-          <div className="mx-auto flex w-full max-w-[1320px] items-center gap-8 px-4 py-3 sm:px-6">
+          <div className="mx-auto flex w-full max-w-[1320px] flex-wrap items-center gap-3 px-4 sm:gap-8 py-3 sm:px-6">
             <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
               <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
                 <rect x="1" y="2" width="8" height="5" rx="1" fill="var(--heat-3)" />

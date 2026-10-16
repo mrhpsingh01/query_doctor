@@ -14,7 +14,8 @@ function analyzeLink(detail: WorkloadQueryDetail): string {
   const engine = detail.sample?.engine ?? (sql.trimStart().startsWith("{") ? "mongodb" : "postgres");
   const base = `/analyses/new?sql=${encodeURIComponent(sql)}`;
   const withParams = detail.sample ? `${base}&params=${encodeURIComponent(JSON.stringify(detail.sample.params))}` : base;
-  return engine === "mongodb" ? `${withParams}&engine=mongodb` : withParams;
+  const withEngine = engine === "mongodb" ? `${withParams}&engine=mongodb` : withParams;
+  return detail.source_connection_id ? `${withEngine}&connection_id=${detail.source_connection_id}` : withEngine;
 }
 
 /** One query shape: its workload trend, every analysis of it, and any change of plan between analyses. */
@@ -50,7 +51,7 @@ export function QueryDetailView({ detail }: { detail: WorkloadQueryDetail }) {
                 <li key={t.snapshot_id} className="flex flex-wrap justify-between gap-2 px-3 py-2">
                   <span className="text-ink-2">{when(t.taken_at)}</span>
                   <span className="font-mono text-[13px]">
-                    {t.calls.toLocaleString("en-US")} calls · mean {formatMs(t.mean_ms)} · est. p95 {formatMs(t.p95_est_ms)}
+                    {t.calls.toLocaleString("en-US")} calls · mean {formatMs(t.mean_ms)} · {t.p95_observed_ms != null ? "sample" : "est."} p95 {formatMs(t.p95_observed_ms ?? t.p95_est_ms)}
                   </span>
                 </li>
               ))}

@@ -229,6 +229,13 @@ export interface WorkloadSnapshot {
   taken_at: string;
   query_count: number;
   skipped_count: number;
+  source_connection_id?: number | null;
+  capture_method?: string;
+  capture_start?: string | null;
+  capture_end?: string | null;
+  coverage?: string;
+  engine_version?: string | null;
+  warnings?: string[];
 }
 
 export interface WorkloadQuery {
@@ -247,6 +254,8 @@ export interface WorkloadQuery {
   temp_blocks: number;
   /** An ESTIMATE (mean + 1.645 standard deviations): pg_stat_statements keeps no percentiles. */
   p95_est_ms: number;
+  /** Observed percentile of the bounded profiler sample, when individual durations are available. */
+  p95_observed_ms?: number | null;
   tables: string[];
   rank: number;
   /** This query's share (0..1) of the snapshot's total execution time. */
@@ -271,7 +280,15 @@ export interface WorkloadPanels {
   missing_validation: WorkloadQuery[];
 }
 
+export interface FixQueue {
+  fixes: { ddl: string; validation: string; fingerprints: string[]; analysis_ids: number[]; saved_ms: number; hours_per_day: number | null }[];
+  saved_hours_in_window: number;
+  hours_per_day: number | null;
+  note: string;
+}
+
 export interface WorkloadDashboard {
+  fix_queue?: FixQueue;
   snapshot: WorkloadSnapshot | null;
   compare_to: WorkloadSnapshot | null;
   queries: WorkloadQuery[];
@@ -304,9 +321,10 @@ export interface PlanChange {
 
 export interface WorkloadQueryDetail {
   fingerprint: string;
+  source_connection_id?: number | null;
   normalized_sql: string;
   sample_sql: string;
-  trend: { snapshot_id: number; taken_at: string; calls: number; total_ms: number; mean_ms: number; p95_est_ms: number }[];
+  trend: { snapshot_id: number; taken_at: string; calls: number; total_ms: number; mean_ms: number; p95_est_ms: number; p95_observed_ms?: number | null }[];
   analyses: {
     id: number;
     created_at: string;
@@ -415,11 +433,14 @@ export interface DbConnection {
   project_id: number;
   name: string;
   kind: string;
+  engine?: Engine;
   host: string;
   port: number;
   database: string;
   username: string;
   sslmode: "prefer" | "require";
+  tls?: boolean;
+  auth_database?: string | null;
 }
 
 export interface PrivacyInfo {

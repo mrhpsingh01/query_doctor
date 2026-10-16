@@ -42,8 +42,15 @@ def awards_validation(result: BenchmarkResult) -> bool:
     penalising sub-millisecond queries, whose relative variance is large even when every indexed run is far faster.
     """
     separated = result.after.p95_ms < result.before.median_ms
+    # Minimum evidence is enforced here, not just at the request/config boundary.
+    enough_runs = result.before.n >= MIN_RUNS and result.after.n >= MIN_RUNS
+    before_counts = {sample.rows for sample in result.before_samples if sample.rows is not None}
+    after_counts = {sample.rows for sample in result.after_samples if sample.rows is not None}
+    counts_match = not before_counts or not after_counts or before_counts == after_counts and len(before_counts) == 1
     return (
-        result.improvement_pct >= MIN_IMPROVEMENT_PCT
+        enough_runs
+        and counts_match
+        and result.improvement_pct >= MIN_IMPROVEMENT_PCT
         and separated
         and result.checksum_match
         and result.index_used

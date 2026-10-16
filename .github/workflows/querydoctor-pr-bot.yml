@@ -1,0 +1,80 @@
+name: QueryDoctor PR gate
+on:
+  pull_request:
+    paths:
+      - '**/*.sql'
+      - '**/migrations/**'
+      - '**/alembic/**'
+      - '**/queries/**'
+      - 'fixtures/ci/**'
+      - 'packages/querydoctor/src/querydoctor/ci/**'
+      - '.github/workflows/querydoctor-pr-bot.yml'
+      - '.querydoctor/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+  pull-requests: write
+concurrency:
+  group: querydoctor-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install QueryDoctor
+        run: pip install ./packages/querydoctor
+      - name: Start disposable PostgreSQL 16 with HypoPG
+        run: |
+          docker build -t querydoctor-ci -f infrastructure/docker/postgres-hypopg.Dockerfile infrastructure/docker
+          docker run -d --name qd-ci -e POSTGRES_PASSWORD=ci-only -p 127.0.0.1:55432:5432 querydoctor-ci
+          for n in $(seq 1 60); do
+            if docker exec qd-ci pg_isready -U postgres; then break; fi
+            sleep 1
+          done
+          docker exec qd-ci psql -U postgres -d template1 -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION hypopg;'
+          docker exec qd-ci psql -U postgres -v ON_ERROR_STOP=1 -c "CREATE ROLE qd_ci LOGIN CREATEDB PASSWORD 'ci-only';"
+      - name: Compare baseline and candidate
+        id: gate
+        continue-on-error: true
+        env:
+          QD_CI_DSN: postgresql://qd_ci:ci-only@127.0.0.1:55432/postgres
+          QD_BASE_COMMIT: ${{ github.event.pull_request.base.sha || github.event.before }}
+          QD_HEAD_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+        shell: bash
+        run: |
+          base_commit="${QD_BASE_COMMIT:-$(git rev-parse HEAD^)}"
+          python scripts/ci_check.py --base-ref "$base_commit" --head-ref "$QD_HEAD_COMMIT" --config .querydoctor/ci.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: querydoctor-evidence
+          path: |
+            querydoctor-report.*
+            querydoctor-fix-*
+      - name: Post or update PR report
+        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            if (!fs.existsSync('querydoctor-report.md')) return;
+            const report = fs.readFileSync('querydoctor-report.md', 'utf8');
+            const body = report.length <= 60000 ? report : report.slice(0, 59000) + '\n\nFull report is available in the querydoctor-evidence artifact.';
+            const comments = await github.paginate(github.rest.issues.listComments, {...context.repo, issue_number: context.issue.number});
+            const previous = comments.find(c => c.user.type === 'Bot' && c.body.startsWith('<!-- querydoctor-pr-report -->'));
+            if (previous) await github.rest.issues.updateComment({...context.repo, comment_id: previous.id, body});
+            else await github.rest.issues.createComment({...context.repo, issue_number: context.issue.number, body});
+      - name: Enforce result
+        if: always() && steps.gate.outcome != 'success'
+        run: exit 1
+      - name: Remove disposable instance
+        if: always()
+        run: docker rm -f qd-ci || true

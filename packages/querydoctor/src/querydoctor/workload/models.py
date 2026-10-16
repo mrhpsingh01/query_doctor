@@ -36,4 +36,5 @@ class WorkloadQuery(BaseModel):
     shared_read_blocks: int
     temp_blocks: int
     p95_est_ms: float  # an ESTIMATE (mean + 1.645 sigma): pg_stat_statements keeps no percentiles
+    p95_observed_ms: float | None = None  # only when individual durations were captured (e.g. MongoDB profiler sample)
     tables: list[str] = []

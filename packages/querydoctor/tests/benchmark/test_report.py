@@ -20,6 +20,7 @@ BENCH = {
 def analysis(**overrides):
     base = {
         "id": 12, "status": "completed", "execute": True, "sql": "SELECT id FROM orders WHERE customer_id = $1",
+        "normalized_sql": "SELECT id FROM orders WHERE customer_id = $1",
         "params": [4242], "fingerprint": "f", "planning_time_ms": 0.2, "execution_time_ms": 742.1, "error": None,
         "plan": {
             "executed": True, "execution_time_ms": 742.1, "planning_time_ms": 0.2,
@@ -47,7 +48,7 @@ def test_markdown_report_states_the_measured_evidence_in_the_guides_terms():
                      "Seq Scan → Index Scan", "Benchmark-validated", "adf070622df0", "PostgreSQL 16.15"):
         assert expected in md, expected
     assert "Cache warming dominates" in md
-    assert "SELECT id FROM orders WHERE customer_id = $1" in md and "4242" in md
+    assert "SELECT id FROM orders WHERE customer_id = $1" in md and "4242" not in md
     assert "Large scan discards most rows" in md and "99.4% of visited rows were discarded." in md
 
 
@@ -85,7 +86,7 @@ def test_html_report_is_standalone_and_escapes_everything_user_supplied():
     html = render_report_html(nasty)
     assert html.startswith("<!doctype html>") and "<style>" in html
     assert "<script>alert(1)</script>" not in html and "<img src=x" not in html
-    assert "&lt;script&gt;" in html
+    assert "&lt;img src=x" in html
     assert "742 ms" in html and "94.5%" in html
     assert "http://" not in html and "https://" not in html  # no external assets
 

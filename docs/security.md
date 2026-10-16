@@ -2,7 +2,7 @@
 
 QueryDoctor runs SQL that people paste into a text box, so safety is built in front of every database call, not added
 after. By default it only connects to its own sample databases (PostgreSQL and MongoDB); that boundary is the main defence and the
-rest are layers behind it. Custom PostgreSQL connections are an opt-in described below.
+rest are layers behind it. Custom PostgreSQL and MongoDB connections are an opt-in described below.
 
 ## Threats and mitigations
 
@@ -23,7 +23,7 @@ rest are layers behind it. Custom PostgreSQL connections are an opt-in described
 | Leaked sandboxes, or jobs left "running" by a crashed worker | The drop and slot release run first in a `finally`, before any progress reporting that could fail. A janitor (at worker start and before each benchmark) removes clones older than 15 minutes and fails jobs that never finished. Celery tasks have soft/hard time limits. | `test_sandbox_integration`, `test_runner_integration`, `test_janitor`, `test_stale_jobs` |
 | Resource exhaustion | Query text capped at 20,000 characters; plans capped at 5 MB; at most two concurrent benchmarks (advisory locks); per-benchmark time limit. | `test_adversarial`, `test_runner_integration` |
 | Double approval of a benchmark | Partial unique index: one active run per candidate. | `test_adversarial` |
-| SSRF through "connect your own database" | Off by default. When enabled, every host is classified and pinned by the network guard (below); `/api/connections/test` refuses everything else with a 400. MongoDB connections are not supported. | `test_analyses_api`, `test_guard` |
+| SSRF through "connect your own database" | Off by default. When enabled, every custom host is classified at registration and use. PostgreSQL connects to the checked `hostaddr`; MongoDB connects directly to the checked IP. | `test_customer_sources`, `test_guard` |
 | Stored credentials | Connection passwords are Fernet-encrypted at rest. No endpoint returns them. | `test_crypto` |
 | Secrets in reports or responses | Reports and API payloads are built from analysis data only; tests assert no connection string or role name appears. | `test_report`, `test_adversarial` |
 | XSS through query text or finding titles | The HTML report escapes every value and loads no external assets; React escapes UI output. | `test_report` |
@@ -31,11 +31,12 @@ rest are layers behind it. Custom PostgreSQL connections are an opt-in described
 
 ## Custom connections and the network guard
 
-Connections to your own PostgreSQL databases exist only when the operator sets `QD_ALLOW_CUSTOM_CONNECTIONS=true`
-(default off: the API answers 403). Passwords are encrypted with Fernet, are never returned or logged, and are overwritten
+Connections to your own PostgreSQL or MongoDB databases exist only when the operator sets `QD_ALLOW_CUSTOM_CONNECTIONS=true`
+(default off: the API answers 403). A deployed API with custom connections also requires `QD_AUTH_TOKENS` (JSON mapping subject names to unique bearer tokens of at least 32 characters) and a nondefault `QD_SECRET_KEY` Fernet key. Project owners can add configured subjects as members; every resource URL checks project membership and unauthorized IDs return 404. The bundled web UI does not yet have a sign-in flow for this mode, so use the authenticated API until that flow is built. Passwords are encrypted with Fernet, are never returned or logged, and are overwritten
 when a connection is deleted. Every host is checked by `querydoctor.netguard` when it is registered **and again each time
-it is used**; the host is resolved once and the connection is made to the checked IP address (`hostaddr`) while the name
-is kept for TLS, so a DNS answer that changes later cannot redirect it (rebinding).
+it is used**. PostgreSQL uses the checked IP address (`hostaddr`) while the name is kept for TLS. MongoDB connects to the
+checked IP with `directConnection`, so customer MongoDB certificates must cover that IP address. A DNS answer that changes
+later cannot redirect either connection (rebinding).
 
 | Target | Result |
 |---|---|
@@ -46,11 +47,14 @@ is kept for TLS, so a DNS answer that changes later cannot redirect it (rebindin
 | IPv4-mapped / 6to4 / Teredo / NAT64 forms of any of the above | classified by the embedded IPv4 address |
 | Decimal, hex and octal spellings (`2130706433`, `0x7f000001`, `0177.0.0.1`, `127.1`) | parsed as the IP they denote, then classified |
 | A name resolving to several addresses | blocked if **any** of them is blocked |
-| Ports other than 5432 (configurable allowlist) | blocked |
+| Ports other than PostgreSQL 5432 or MongoDB 27017 | blocked for that engine |
 | `target-postgres`, `bench-postgres` | allowed by name (the lab's own containers) |
 
-Sessions on custom databases are read-only, run as a non-superuser and time out like the sample's. Benchmarks are
-refused for custom connections (409), and index testing is skipped, leaving ideas as *suggested*, when HypoPG is missing.
+PostgreSQL sessions on custom databases are read-only, run as a non-superuser and time out like the sample's. Customer
+MongoDB credentials must be provisioned with read and metadata privileges only; QueryDoctor validates find and aggregate
+shapes and sets a command time limit. Benchmarks are refused for all custom connections (409), and PostgreSQL index testing
+is skipped, leaving ideas as *suggested*, when HypoPG is missing. Customer MongoDB workload data is imported as a bounded
+profiler sample with a declared capture window and coverage; QueryDoctor does not turn profiling on.
 Connection errors and block reasons never echo credentials or resolver internals.
 
 ## MongoDB
@@ -113,9 +117,20 @@ creates lives in a throwaway clone, after you confirm.
 
 * Failure injection (lock contention, a restarted target database, a killed worker, a hanging language model) is covered by
   `pytest -m chaos apps/api/tests/chaos` against the running stack.
-* **No authentication.** This release is a single-user demo and must not be exposed to an untrusted network as is.
+* Authentication and project membership are available for the customer API when `QD_AUTH_TOKENS` is set. The bundled web UI still lacks a sign-in flow, and the no-token mode remains a local demo that must not be exposed to an untrusted network.
 * The default credentials in `compose.yaml` are for local development. Set `QD_SECRET_KEY` (a Fernet key) and change
   the database passwords for any shared deployment.
 * Benchmark isolation is database-level, not process-level. That is appropriate while only QueryDoctor-controlled
   sample data is cloned; connecting customer databases would call for per-run containers or snapshots.
 * The denylist is a defence in depth. The real boundary is the read-only, non-superuser role.
+
+
+## Cryptographic output verification
+
+PostgreSQL 16 computes SHA-256 per output row, then hashes the sorted fixed-width digests and records the count.
+MongoDB 7 uses the bundled MIT-licensed js-sha256 implementation in a fixed internal `$function`, hashing its
+BSON-aware `tojson` representation per document. The worker receives only sorted digests and folds them with SHA-256;
+result documents never leave the database. Duplicate multiplicity and counts remain significant. Checks execute outside
+timed samples and carry timeouts. A deployment with server JavaScript disabled cannot award MongoDB benchmark validation;
+the benchmark fails explicitly. User-supplied `$function`, `$where`, and `$accumulator` remain denied. MongoDB 8+
+deprecates server JavaScript, so a future engine upgrade must migrate this internal function to a native hash operator.

@@ -75,7 +75,8 @@ def test_missing_validation_lists_the_queries_without_benchmark_evidence(http, b
     }
     expected = [q["fingerprint"] for q in body["queries"] if q["fingerprint"] not in validated][:10]  # by total time
     assert [q["fingerprint"] for q in body["panels"]["missing_validation"]] == expected
-    assert len(expected) >= 8  # most of the demo queries have never been benchmarked
+    assert not validated & {q["fingerprint"] for q in body["panels"]["missing_validation"]}  # a benchmarked query never lists as missing evidence
+    assert expected  # the demo traffic always contains shapes nobody has benchmarked yet
 
 
 def test_the_regress_demo_followed_by_a_second_import_reports_a_regression(http, baseline):

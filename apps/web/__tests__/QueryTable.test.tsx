@@ -23,6 +23,12 @@ describe("QueryTable", () => {
     expect(header).toHaveAttribute("title", expect.stringMatching(/no percentiles/i));
   });
 
+  it("labels MongoDB profiler p95 as an observed sample", () => {
+    render(<QueryTable queries={[workloadQuery({ p95_observed_ms: 31 })]} engine="mongodb" />);
+    expect(screen.getByRole("columnheader", { name: /sample p95/i })).toHaveAttribute("title", expect.stringMatching(/bounded profiler sample/i));
+    expect(screen.getAllByRole("row")[1]).toHaveTextContent("31 ms");
+  });
+
   it("links each query to its detail page and to a pre-filled analysis", () => {
     const q = workloadQuery();
     render(<QueryTable queries={[q]} />);

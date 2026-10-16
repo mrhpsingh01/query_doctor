@@ -49,6 +49,9 @@ def _kv(evidence: dict[str, Any]) -> list[str]:
     for key, value in evidence.items():
         if value is None or isinstance(value, (dict, list)) and not value:
             continue
+        if isinstance(value, str):
+            # PostgreSQL plan conditions can embed bound values. Keep numeric evidence, omit verbatim conditions.
+            continue
         shown = json.dumps(value) if isinstance(value, (dict, list)) else (f"{value:,}" if isinstance(value, int) and not isinstance(value, bool) else str(value))
         items.append(f"{key.replace('_', ' ')}: {shown}")
     return items
@@ -89,8 +92,8 @@ def _blocks(a: dict[str, Any]) -> list[Block]:
     mode = "measured by running the query" if executed else "planner estimates only (the query was not run)"
     b.append(("p", f"Generated {generated}. This analysis was {mode}."))
 
-    b += [("h2", "Query"), ("code", a.get("sql", ""))]
-    b.append(("p", f"Parameters: {json.dumps(a.get('params', []))}"))
+    b += [("h2", "Query shape"), ("code", a.get("normalized_sql") or "[query shape unavailable]")]
+    b.append(("p", f"Parameter set: {len(a.get('params', []))} bound value(s), omitted from this report."))
 
     b.append(("h2", "Execution"))
     if executed:

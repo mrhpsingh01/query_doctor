@@ -54,7 +54,7 @@ def run_candidate_stage(session: Session, deps, analysis: Analysis, plan: Parsed
             with open_target(session, deps, analysis) as conn:
                 # HypoPG only influences plain EXPLAIN, so the baseline must be a planner-only plan.
                 baseline = plan if not analysis.execute else adapter.normalize_plan(adapter.explain(conn, vq, snapshot.params, execute=False))
-                if analysis.connection_id is not None and not deps.hypopg_available(conn):
+                if analysis.engine == "postgres" and analysis.connection_id is not None and not deps.hypopg_available(conn):
                     # Index testing needs HypoPG on the target. Without it every idea stays what it is: a suggestion.
                     for c in kept:
                         c.rationale.append(HYPOPG_MISSING_NOTE)

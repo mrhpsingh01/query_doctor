@@ -249,7 +249,7 @@ def _measure_candidate(conn, sql, params, ddl, table, ordered, config, on_progre
             improvement_pct=improvement_pct(before.median_ms, after.median_ms), index_size_bytes=size,
             index_build_ms=build_ms, plan_fingerprint_before=base.plan_fingerprint,
             plan_fingerprint_after=after_plan.fingerprint, checksum_match=match, index_used=index_used, warnings=warnings,
-            pg_version=env.version, settings=env.settings, dataset_snapshot=env.snapshot, ddl=ddl,
+            pg_version=env.version, settings={**env.settings, "checksum_algorithm": "sha256", "checksum_before": base.checks[0], "checksum_after": checks_after[0]}, dataset_snapshot=env.snapshot, ddl=ddl, plan_after=after_plan.model_dump(mode="json"),
         )
     finally:
         if drop_after and created_name is not None:

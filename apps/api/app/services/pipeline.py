@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
 import psycopg
+from pymongo.errors import PyMongoError
 from querydoctor.candidates import score_candidates
 from querydoctor.db import DbError, ExplainTimeout, cancel_backend, collect_schema, explain, guarded_connection
 from querydoctor.diagnosis import Thresholds
@@ -45,6 +46,7 @@ class PipelineDeps:
     hypopg_available: Callable = field(default=lambda conn: _hypopg_available(conn))  # is HypoPG installed on the target?
     mongo_target_uri: str = ""  # read-only MongoDB user on the sample database
     mongo_connect: Callable | None = None  # (uri) -> context manager yielding a pymongo Database
+    connection_mongo: Callable | None = None  # (session, analysis) -> guarded custom MongoDB context manager
     mongo_explain: Callable | None = None
     mongo_collect_schema: Callable | None = None
     predictor: object | None = None  # querydoctor.ranking.Predictor (or a test double); None means heuristic ordering only
@@ -84,7 +86,10 @@ def open_target(session: Session, deps: PipelineDeps, analysis: Analysis):
     """A context manager yielding the connection an analysis runs against (PostgreSQL connection or MongoDB database)."""
     if analysis.engine == "mongodb":
         from querydoctor.mongo.schema import mongo_connect
-
+        if analysis.connection_id is not None:
+            if deps.connection_mongo is None:
+                raise ValueError("custom MongoDB connections are not configured")
+            return deps.connection_mongo(session, analysis)
         return (deps.mongo_connect or mongo_connect)(deps.mongo_target_uri)
     return deps.connect(dsn_for(session, deps, analysis))
 
@@ -158,6 +163,9 @@ def run_analysis_pipeline(session: Session, analysis_id: int, deps: PipelineDeps
     except psycopg.Error as exc:
         session.rollback()
         _finish(session, deps, analysis, "failed", database_error_message(exc))
+    except PyMongoError:
+        session.rollback()
+        _finish(session, deps, analysis, "failed", "The MongoDB source could not complete the read-only analysis.")
     except Exception:
         log.exception("analysis %s crashed", analysis_id)
         session.rollback()

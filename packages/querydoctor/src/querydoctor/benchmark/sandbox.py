@@ -55,8 +55,9 @@ class Sandbox:
     def drop(self) -> None:
         if self.name is None:
             return
-        name, self.name = self.name, None
+        name = self.name
         _drop(self.admin_dsn, name)
+        self.name = None
 
     def __enter__(self) -> Sandbox:
         self.create()
@@ -68,7 +69,16 @@ class Sandbox:
 
 def _drop(admin_dsn: str, name: str) -> None:
     with psycopg.connect(admin_dsn, autocommit=True, connect_timeout=5) as conn:
-        conn.execute(psql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)").format(psql.Identifier(name)))
+        for attempt in range(20):
+            try:
+                conn.execute(psql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)").format(psql.Identifier(name)))
+                return
+            except (psycopg.errors.InsufficientPrivilege, psycopg.errors.ObjectInUse):
+                # Autovacuum may briefly attach as the cluster superuser. Do not broaden
+                # the benchmark role's privileges just to terminate it; let it finish.
+                if attempt == 19:
+                    raise
+                time.sleep(0.3)
 
 
 def drop_stale(admin_dsn: str, max_age_s: float) -> int:
@@ -82,6 +92,6 @@ def drop_stale(admin_dsn: str, max_age_s: float) -> int:
             match = _COMMENT_RE.search(comment or "")
             created = int(match.group(1)) if match else 0  # unknown age: treat as old
             if time.time() - created >= max_age_s:
-                conn.execute(psql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)").format(psql.Identifier(name)))
+                _drop(admin_dsn, name)
                 dropped += 1
     return dropped

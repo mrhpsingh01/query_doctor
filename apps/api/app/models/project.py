@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, CreatedMixin
@@ -25,10 +25,23 @@ class Connection(CreatedMixin, Base):
     project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"))
     name: Mapped[str] = mapped_column(String(200))
     kind: Mapped[str] = mapped_column(String(20), default="sample")
+    engine: Mapped[str] = mapped_column(String(20), default="postgres")
     host: Mapped[str] = mapped_column(String(255))
     port: Mapped[int] = mapped_column(Integer)
     database: Mapped[str] = mapped_column(String(200))
     username: Mapped[str] = mapped_column(String(200))
     encrypted_password: Mapped[str] = mapped_column(Text)  # empty once the connection is deleted
     sslmode: Mapped[str] = mapped_column(String(12), default="prefer")
+    tls: Mapped[bool] = mapped_column(Boolean, default=True)
+    auth_database: Mapped[str | None] = mapped_column(String(200), default=None)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
+
+
+class ProjectMember(Base):
+    __tablename__ = "project_members"
+    __table_args__ = (UniqueConstraint("project_id", "subject", name="uq_project_member"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    subject: Mapped[str] = mapped_column(String(200), index=True)
+    role: Mapped[str] = mapped_column(String(20), default="member")

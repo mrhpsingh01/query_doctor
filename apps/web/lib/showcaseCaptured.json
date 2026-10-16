@@ -1,0 +1,3174 @@
+{
+  "scan": {
+    "sql": "SELECT id, customer_id, created_at FROM orders WHERE customer_id = 1 ORDER BY created_at LIMIT 100",
+    "raw_plan": [
+      {
+        "Plan": {
+          "Node Type": "Limit",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 4411.31,
+          "Total Cost": 4422.81,
+          "Plan Rows": 100,
+          "Plan Width": 16,
+          "Actual Startup Time": 8.303,
+          "Actual Total Time": 10.939,
+          "Actual Rows": 100,
+          "Actual Loops": 1,
+          "Output": [
+            "id",
+            "customer_id",
+            "created_at"
+          ],
+          "Shared Hit Blocks": 1464,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "WAL Records": 0,
+          "WAL FPI": 0,
+          "WAL Bytes": 0,
+          "Plans": [
+            {
+              "Node Type": "Gather Merge",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 4411.31,
+              "Total Cost": 4908.0,
+              "Plan Rows": 4319,
+              "Plan Width": 16,
+              "Actual Startup Time": 8.302,
+              "Actual Total Time": 10.93,
+              "Actual Rows": 100,
+              "Actual Loops": 1,
+              "Output": [
+                "id",
+                "customer_id",
+                "created_at"
+              ],
+              "Workers Planned": 1,
+              "Workers Launched": 1,
+              "Shared Hit Blocks": 1464,
+              "Shared Read Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0,
+              "Local Hit Blocks": 0,
+              "Local Read Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Temp Written Blocks": 0,
+              "WAL Records": 0,
+              "WAL FPI": 0,
+              "WAL Bytes": 0,
+              "Plans": [
+                {
+                  "Node Type": "Sort",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Startup Cost": 3411.3,
+                  "Total Cost": 3422.1,
+                  "Plan Rows": 4319,
+                  "Plan Width": 16,
+                  "Actual Startup Time": 6.763,
+                  "Actual Total Time": 6.768,
+                  "Actual Rows": 100,
+                  "Actual Loops": 2,
+                  "Output": [
+                    "id",
+                    "customer_id",
+                    "created_at"
+                  ],
+                  "Sort Key": [
+                    "orders.created_at"
+                  ],
+                  "Sort Method": "top-N heapsort",
+                  "Sort Space Used": 28,
+                  "Sort Space Type": "Memory",
+                  "Shared Hit Blocks": 1464,
+                  "Shared Read Blocks": 0,
+                  "Shared Dirtied Blocks": 0,
+                  "Shared Written Blocks": 0,
+                  "Local Hit Blocks": 0,
+                  "Local Read Blocks": 0,
+                  "Local Dirtied Blocks": 0,
+                  "Local Written Blocks": 0,
+                  "Temp Read Blocks": 0,
+                  "Temp Written Blocks": 0,
+                  "WAL Records": 0,
+                  "WAL FPI": 0,
+                  "WAL Bytes": 0,
+                  "Workers": [
+                    {
+                      "Worker Number": 0,
+                      "Actual Startup Time": 5.598,
+                      "Actual Total Time": 5.602,
+                      "Actual Rows": 100,
+                      "Actual Loops": 1,
+                      "Sort Method": "top-N heapsort",
+                      "Sort Space Used": 28,
+                      "Sort Space Type": "Memory",
+                      "Shared Hit Blocks": 652,
+                      "Shared Read Blocks": 0,
+                      "Shared Dirtied Blocks": 0,
+                      "Shared Written Blocks": 0,
+                      "Local Hit Blocks": 0,
+                      "Local Read Blocks": 0,
+                      "Local Dirtied Blocks": 0,
+                      "Local Written Blocks": 0,
+                      "Temp Read Blocks": 0,
+                      "Temp Written Blocks": 0,
+                      "WAL Records": 0,
+                      "WAL FPI": 0,
+                      "WAL Bytes": 0
+                    }
+                  ],
+                  "Plans": [
+                    {
+                      "Node Type": "Seq Scan",
+                      "Parent Relationship": "Outer",
+                      "Parallel Aware": true,
+                      "Async Capable": false,
+                      "Relation Name": "orders",
+                      "Schema": "public",
+                      "Alias": "orders",
+                      "Startup Cost": 0.0,
+                      "Total Cost": 3246.24,
+                      "Plan Rows": 4319,
+                      "Plan Width": 16,
+                      "Actual Startup Time": 0.013,
+                      "Actual Total Time": 6.552,
+                      "Actual Rows": 3750,
+                      "Actual Loops": 2,
+                      "Output": [
+                        "id",
+                        "customer_id",
+                        "created_at"
+                      ],
+                      "Filter": "(orders.customer_id = 1)",
+                      "Rows Removed by Filter": 121250,
+                      "Shared Hit Blocks": 1408,
+                      "Shared Read Blocks": 0,
+                      "Shared Dirtied Blocks": 0,
+                      "Shared Written Blocks": 0,
+                      "Local Hit Blocks": 0,
+                      "Local Read Blocks": 0,
+                      "Local Dirtied Blocks": 0,
+                      "Local Written Blocks": 0,
+                      "Temp Read Blocks": 0,
+                      "Temp Written Blocks": 0,
+                      "WAL Records": 0,
+                      "WAL FPI": 0,
+                      "WAL Bytes": 0,
+                      "Workers": [
+                        {
+                          "Worker Number": 0,
+                          "Actual Startup Time": 0.011,
+                          "Actual Total Time": 5.395,
+                          "Actual Rows": 3134,
+                          "Actual Loops": 1,
+                          "Shared Hit Blocks": 596,
+                          "Shared Read Blocks": 0,
+                          "Shared Dirtied Blocks": 0,
+                          "Shared Written Blocks": 0,
+                          "Local Hit Blocks": 0,
+                          "Local Read Blocks": 0,
+                          "Local Dirtied Blocks": 0,
+                          "Local Written Blocks": 0,
+                          "Temp Read Blocks": 0,
+                          "Temp Written Blocks": 0,
+                          "WAL Records": 0,
+                          "WAL FPI": 0,
+                          "WAL Bytes": 0
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "Settings": {
+          "work_mem": "64kB"
+        },
+        "Planning": {
+          "Shared Hit Blocks": 29,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.157,
+        "Triggers": [],
+        "Execution Time": 10.983
+      }
+    ],
+    "plan": {
+      "root": {
+        "node_id": "0",
+        "parent_id": null,
+        "node_type": "Limit",
+        "relation_name": null,
+        "index_name": null,
+        "estimated_rows": 100.0,
+        "actual_rows": 100.0,
+        "estimated_cost": 4422.81,
+        "actual_time_ms": 10.939,
+        "loops": 1,
+        "rows_removed_by_filter": null,
+        "shared_hit_blocks": 1464,
+        "shared_read_blocks": 0,
+        "temp_read_blocks": 0,
+        "temp_written_blocks": 0,
+        "filter_condition": null,
+        "index_condition": null,
+        "join_condition": null,
+        "plan_width": 16,
+        "sort_method": null,
+        "hash_batches": null,
+        "output": [
+          "id",
+          "customer_id",
+          "created_at"
+        ],
+        "error_ratio": 1.0,
+        "filter_waste": null,
+        "exclusive_time_ms": 0.009000000000000341,
+        "total_time_ms": 10.939,
+        "exclusive_temp_written_blocks": 0,
+        "exclusive_temp_read_blocks": 0,
+        "docs_examined": null,
+        "keys_examined": null,
+        "io_pressure": "memory",
+        "raw": {
+          "Node Type": "Limit",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 4411.31,
+          "Total Cost": 4422.81,
+          "Plan Rows": 100,
+          "Plan Width": 16,
+          "Actual Startup Time": 8.303,
+          "Actual Total Time": 10.939,
+          "Actual Rows": 100,
+          "Actual Loops": 1,
+          "Output": [
+            "id",
+            "customer_id",
+            "created_at"
+          ],
+          "Shared Hit Blocks": 1464,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "WAL Records": 0,
+          "WAL FPI": 0,
+          "WAL Bytes": 0
+        },
+        "children": [
+          {
+            "node_id": "0.0",
+            "parent_id": "0",
+            "node_type": "Gather Merge",
+            "relation_name": null,
+            "index_name": null,
+            "estimated_rows": 4319.0,
+            "actual_rows": 100.0,
+            "estimated_cost": 4908.0,
+            "actual_time_ms": 10.93,
+            "loops": 1,
+            "rows_removed_by_filter": null,
+            "shared_hit_blocks": 1464,
+            "shared_read_blocks": 0,
+            "temp_read_blocks": 0,
+            "temp_written_blocks": 0,
+            "filter_condition": null,
+            "index_condition": null,
+            "join_condition": null,
+            "plan_width": 16,
+            "sort_method": null,
+            "hash_batches": null,
+            "output": [
+              "id",
+              "customer_id",
+              "created_at"
+            ],
+            "error_ratio": 43.19,
+            "filter_waste": null,
+            "exclusive_time_ms": 4.162,
+            "total_time_ms": 10.93,
+            "exclusive_temp_written_blocks": 0,
+            "exclusive_temp_read_blocks": 0,
+            "docs_examined": null,
+            "keys_examined": null,
+            "io_pressure": "memory",
+            "raw": {
+              "Node Type": "Gather Merge",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 4411.31,
+              "Total Cost": 4908.0,
+              "Plan Rows": 4319,
+              "Plan Width": 16,
+              "Actual Startup Time": 8.302,
+              "Actual Total Time": 10.93,
+              "Actual Rows": 100,
+              "Actual Loops": 1,
+              "Output": [
+                "id",
+                "customer_id",
+                "created_at"
+              ],
+              "Workers Planned": 1,
+              "Workers Launched": 1,
+              "Shared Hit Blocks": 1464,
+              "Shared Read Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0,
+              "Local Hit Blocks": 0,
+              "Local Read Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Temp Written Blocks": 0,
+              "WAL Records": 0,
+              "WAL FPI": 0,
+              "WAL Bytes": 0
+            },
+            "children": [
+              {
+                "node_id": "0.0.0",
+                "parent_id": "0.0",
+                "node_type": "Sort",
+                "relation_name": null,
+                "index_name": null,
+                "estimated_rows": 4319.0,
+                "actual_rows": 100.0,
+                "estimated_cost": 3422.1,
+                "actual_time_ms": 6.768,
+                "loops": 2,
+                "rows_removed_by_filter": null,
+                "shared_hit_blocks": 1464,
+                "shared_read_blocks": 0,
+                "temp_read_blocks": 0,
+                "temp_written_blocks": 0,
+                "filter_condition": null,
+                "index_condition": null,
+                "join_condition": null,
+                "plan_width": 16,
+                "sort_method": "top-N heapsort",
+                "hash_batches": null,
+                "output": [
+                  "id",
+                  "customer_id",
+                  "created_at"
+                ],
+                "error_ratio": 43.19,
+                "filter_waste": null,
+                "exclusive_time_ms": 0.2160000000000002,
+                "total_time_ms": 6.768,
+                "exclusive_temp_written_blocks": 0,
+                "exclusive_temp_read_blocks": 0,
+                "docs_examined": null,
+                "keys_examined": null,
+                "io_pressure": "memory",
+                "raw": {
+                  "Node Type": "Sort",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Startup Cost": 3411.3,
+                  "Total Cost": 3422.1,
+                  "Plan Rows": 4319,
+                  "Plan Width": 16,
+                  "Actual Startup Time": 6.763,
+                  "Actual Total Time": 6.768,
+                  "Actual Rows": 100,
+                  "Actual Loops": 2,
+                  "Output": [
+                    "id",
+                    "customer_id",
+                    "created_at"
+                  ],
+                  "Sort Key": [
+                    "orders.created_at"
+                  ],
+                  "Sort Method": "top-N heapsort",
+                  "Sort Space Used": 28,
+                  "Sort Space Type": "Memory",
+                  "Shared Hit Blocks": 1464,
+                  "Shared Read Blocks": 0,
+                  "Shared Dirtied Blocks": 0,
+                  "Shared Written Blocks": 0,
+                  "Local Hit Blocks": 0,
+                  "Local Read Blocks": 0,
+                  "Local Dirtied Blocks": 0,
+                  "Local Written Blocks": 0,
+                  "Temp Read Blocks": 0,
+                  "Temp Written Blocks": 0,
+                  "WAL Records": 0,
+                  "WAL FPI": 0,
+                  "WAL Bytes": 0,
+                  "Workers": [
+                    {
+                      "Worker Number": 0,
+                      "Actual Startup Time": 5.598,
+                      "Actual Total Time": 5.602,
+                      "Actual Rows": 100,
+                      "Actual Loops": 1,
+                      "Sort Method": "top-N heapsort",
+                      "Sort Space Used": 28,
+                      "Sort Space Type": "Memory",
+                      "Shared Hit Blocks": 652,
+                      "Shared Read Blocks": 0,
+                      "Shared Dirtied Blocks": 0,
+                      "Shared Written Blocks": 0,
+                      "Local Hit Blocks": 0,
+                      "Local Read Blocks": 0,
+                      "Local Dirtied Blocks": 0,
+                      "Local Written Blocks": 0,
+                      "Temp Read Blocks": 0,
+                      "Temp Written Blocks": 0,
+                      "WAL Records": 0,
+                      "WAL FPI": 0,
+                      "WAL Bytes": 0
+                    }
+                  ]
+                },
+                "children": [
+                  {
+                    "node_id": "0.0.0.0",
+                    "parent_id": "0.0.0",
+                    "node_type": "Seq Scan",
+                    "relation_name": "orders",
+                    "index_name": null,
+                    "estimated_rows": 4319.0,
+                    "actual_rows": 3750.0,
+                    "estimated_cost": 3246.24,
+                    "actual_time_ms": 6.552,
+                    "loops": 2,
+                    "rows_removed_by_filter": 121250,
+                    "shared_hit_blocks": 1408,
+                    "shared_read_blocks": 0,
+                    "temp_read_blocks": 0,
+                    "temp_written_blocks": 0,
+                    "filter_condition": "(orders.customer_id = 1)",
+                    "index_condition": null,
+                    "join_condition": null,
+                    "plan_width": 16,
+                    "sort_method": null,
+                    "hash_batches": null,
+                    "output": [
+                      "id",
+                      "customer_id",
+                      "created_at"
+                    ],
+                    "error_ratio": 1.1517333333333333,
+                    "filter_waste": 0.97,
+                    "exclusive_time_ms": 6.552,
+                    "total_time_ms": 6.552,
+                    "exclusive_temp_written_blocks": 0,
+                    "exclusive_temp_read_blocks": 0,
+                    "docs_examined": null,
+                    "keys_examined": null,
+                    "io_pressure": "memory",
+                    "raw": {
+                      "Node Type": "Seq Scan",
+                      "Parent Relationship": "Outer",
+                      "Parallel Aware": true,
+                      "Async Capable": false,
+                      "Relation Name": "orders",
+                      "Schema": "public",
+                      "Alias": "orders",
+                      "Startup Cost": 0.0,
+                      "Total Cost": 3246.24,
+                      "Plan Rows": 4319,
+                      "Plan Width": 16,
+                      "Actual Startup Time": 0.013,
+                      "Actual Total Time": 6.552,
+                      "Actual Rows": 3750,
+                      "Actual Loops": 2,
+                      "Output": [
+                        "id",
+                        "customer_id",
+                        "created_at"
+                      ],
+                      "Filter": "(orders.customer_id = 1)",
+                      "Rows Removed by Filter": 121250,
+                      "Shared Hit Blocks": 1408,
+                      "Shared Read Blocks": 0,
+                      "Shared Dirtied Blocks": 0,
+                      "Shared Written Blocks": 0,
+                      "Local Hit Blocks": 0,
+                      "Local Read Blocks": 0,
+                      "Local Dirtied Blocks": 0,
+                      "Local Written Blocks": 0,
+                      "Temp Read Blocks": 0,
+                      "Temp Written Blocks": 0,
+                      "WAL Records": 0,
+                      "WAL FPI": 0,
+                      "WAL Bytes": 0,
+                      "Workers": [
+                        {
+                          "Worker Number": 0,
+                          "Actual Startup Time": 0.011,
+                          "Actual Total Time": 5.395,
+                          "Actual Rows": 3134,
+                          "Actual Loops": 1,
+                          "Shared Hit Blocks": 596,
+                          "Shared Read Blocks": 0,
+                          "Shared Dirtied Blocks": 0,
+                          "Shared Written Blocks": 0,
+                          "Local Hit Blocks": 0,
+                          "Local Read Blocks": 0,
+                          "Local Dirtied Blocks": 0,
+                          "Local Written Blocks": 0,
+                          "Temp Read Blocks": 0,
+                          "Temp Written Blocks": 0,
+                          "WAL Records": 0,
+                          "WAL FPI": 0,
+                          "WAL Bytes": 0
+                        }
+                      ]
+                    },
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "planning_time_ms": 0.157,
+      "execution_time_ms": 10.983,
+      "settings": {
+        "work_mem": "64kB"
+      },
+      "executed": true,
+      "engine": "postgres",
+      "fingerprint": "21a0afaba03677f1"
+    },
+    "findings": [
+      {
+        "id": 1,
+        "rule_id": "PG_SEQ_SCAN_FILTER_WASTE",
+        "severity": "critical",
+        "title": "Large scan discards most rows",
+        "summary": "97.0% of visited rows were discarded.",
+        "evidence": {
+          "table": "orders",
+          "rows_visited": 250000,
+          "rows_removed": 242500,
+          "filter_waste": 0.97,
+          "loops": 2,
+          "filter": "(orders.customer_id = 1)",
+          "estimated": false
+        },
+        "node_ids": [
+          "0.0.0.0"
+        ],
+        "confidence": 0.92,
+        "next_actions": [
+          "Evaluate an index covering the filter columns on orders"
+        ]
+      },
+      {
+        "id": 2,
+        "rule_id": "PG_CARDINALITY_MISESTIMATE",
+        "severity": "warning",
+        "title": "Planner row estimate is far from reality",
+        "summary": "Gather Merge estimated 4,319 rows but produced 100 (43x off).",
+        "evidence": {
+          "estimated_rows": 4319.0,
+          "actual_rows": 100.0,
+          "error_ratio": 43.19,
+          "direction": "overestimated",
+          "loops": 1,
+          "table": null
+        },
+        "node_ids": [
+          "0.0"
+        ],
+        "confidence": 0.9,
+        "next_actions": [
+          "Run ANALYZE on the involved tables",
+          "Raise the statistics target for the filtered columns or create extended statistics for correlated columns"
+        ]
+      },
+      {
+        "id": 3,
+        "rule_id": "PG_CARDINALITY_MISESTIMATE",
+        "severity": "warning",
+        "title": "Planner row estimate is far from reality",
+        "summary": "Sort estimated 4,319 rows but produced 100 (43x off).",
+        "evidence": {
+          "estimated_rows": 4319.0,
+          "actual_rows": 100.0,
+          "error_ratio": 43.19,
+          "direction": "overestimated",
+          "loops": 2,
+          "table": null
+        },
+        "node_ids": [
+          "0.0.0"
+        ],
+        "confidence": 0.9,
+        "next_actions": [
+          "Run ANALYZE on the involved tables",
+          "Raise the statistics target for the filtered columns or create extended statistics for correlated columns"
+        ]
+      }
+    ],
+    "comparison": {
+      "cost_reduction": 0.9818599487656039,
+      "rows_reduction": 0.970632,
+      "plan_risk_reduction": 1.0,
+      "operator_improvement": 1.0,
+      "planner_score": 0.9863089820679614,
+      "uses_candidate": true,
+      "removed_operators": [
+        "Gather Merge",
+        "Seq Scan",
+        "Sort"
+      ],
+      "added_operators": [
+        "Index Scan"
+      ],
+      "cost_before": 4422.81,
+      "cost_after": 80.23
+    },
+    "seed_sql": "CREATE TABLE orders AS SELECT n AS id, CASE WHEN n % 100 < 3 THEN 1 ELSE n % 33 + 2 END AS customer_id, TIMESTAMP '2022-01-01' + n * INTERVAL '1 second' AS created_at FROM generate_series(1,250000) n; ANALYZE orders;",
+    "benchmark": {
+      "before": {
+        "n": 7,
+        "median_ms": 9.101,
+        "p95_ms": 9.234,
+        "mean_ms": 9.083857142857143,
+        "stdev_ms": 0.13035263527757923,
+        "cv": 0.014349921319500128,
+        "min_ms": 8.857,
+        "max_ms": 9.258
+      },
+      "after": {
+        "n": 7,
+        "median_ms": 0.07,
+        "p95_ms": 0.08839999999999999,
+        "mean_ms": 0.07371428571428572,
+        "stdev_ms": 0.009894683517160203,
+        "cv": 0.1342302027521733,
+        "min_ms": 0.066,
+        "max_ms": 0.089
+      },
+      "before_samples": [
+        {
+          "execution_ms": 8.857,
+          "planning_ms": 0.069,
+          "rows": 100,
+          "shared_hit_blocks": 1464,
+          "shared_read_blocks": 0,
+          "temp_blocks": 0
+        },
+        {
+          "execution_ms": 9.101,
+          "planning_ms": 0.061,
+          "rows": 100,
+          "shared_hit_blocks": 1464,
+          "shared_read_blocks": 0,
+          "temp_blocks": 0
+        },
+        {
+          "execution_ms": 9.143,
+          "planning_ms": 0.068,
+          "rows": 100,
+          "shared_hit_blocks": 1464,
+          "shared_read_blocks": 0,
+          "temp_blocks": 0
+        },
+        {
+          "execution_ms": 9.178,
+          "planning_ms": 0.052,
+          "rows": 100,
+          "shared_hit_blocks": 1464,
+          "shared_read_blocks": 0,
+          "temp_blocks": 0
+        },
+        {
+          "execution_ms": 9.042,
+          "planning_ms": 0.051,
+          "rows": 100,
+          "shared_hit_blocks": 1464,
+          "shared_read_blocks": 0,
+          "temp_blocks": 0
+        },
+        {
+          "execution_ms": 9.258,
+          "planning_ms": 0.052,
+          "rows": 100,
+          "shared_hit_blocks": 1464,
+          "shared_read_blocks": 0,
+          "temp_blocks": 0
+        },
+        {
+          "execution_ms": 9.008,
+          "planning_ms": 0.052,
+          "rows": 100,
+          "shared_hit_blocks": 1464,
+          "shared_read_blocks": 0,
+          "temp_blocks": 0
+        }
+      ],
+      "after_samples": [
+        {
+          "execution_ms": 0.066,
+          "planning_ms": 0.074,
+          "rows": 100,
+          "shared_hit_blocks": 21,
+          "shared_read_blocks": 0,
+          "temp_blocks": 0
+        },
+        {
+          "execution_ms": 0.07,
+          "planning_ms": 0.085,
+          "rows": 100,
+          "shared_hit_blocks": 21,
+          "shared_read_blocks": 0,
+          "temp_blocks": 0
+        },
+        {
+          "execution_ms": 0.089,
+          "planning_ms": 0.086,
+          "rows": 100,
+          "shared_hit_blocks": 21,
+          "shared_read_blocks": 0,
+          "temp_blocks": 0
+        },
+        {
+          "execution_ms": 0.067,
+          "planning_ms": 0.075,
+          "rows": 100,
+          "shared_hit_blocks": 21,
+          "shared_read_blocks": 0,
+          "temp_blocks": 0
+        },
+        {
+          "execution_ms": 0.07,
+          "planning_ms": 0.079,
+          "rows": 100,
+          "shared_hit_blocks": 21,
+          "shared_read_blocks": 0,
+          "temp_blocks": 0
+        },
+        {
+          "execution_ms": 0.087,
+          "planning_ms": 0.088,
+          "rows": 100,
+          "shared_hit_blocks": 21,
+          "shared_read_blocks": 0,
+          "temp_blocks": 0
+        },
+        {
+          "execution_ms": 0.067,
+          "planning_ms": 0.071,
+          "rows": 100,
+          "shared_hit_blocks": 21,
+          "shared_read_blocks": 0,
+          "temp_blocks": 0
+        }
+      ],
+      "improvement_pct": 99.23085375233491,
+      "index_size_bytes": 7905280,
+      "index_build_ms": 117.54120000114199,
+      "plan_fingerprint_before": "21a0afaba03677f1",
+      "plan_fingerprint_after": "9883f8a01d7c05fa",
+      "checksum_match": true,
+      "index_used": true,
+      "warnings": [],
+      "pg_version": "PostgreSQL 16.15 (Debian 16.15-1.pgdg13+2)",
+      "settings": {
+        "effective_cache_size": "524288",
+        "max_parallel_workers_per_gather": "2",
+        "random_page_cost": "4",
+        "shared_buffers": "16384",
+        "work_mem": "64",
+        "checksum_algorithm": "sha256",
+        "checksum_before": "100:924d0fc568b86b926c1e2e78b006fde94343cf8c5aa02c3cae642fa02d65947c",
+        "checksum_after": "100:924d0fc568b86b926c1e2e78b006fde94343cf8c5aa02c3cae642fa02d65947c"
+      },
+      "dataset_snapshot": "74bc84bbdbd8",
+      "ddl": "CREATE INDEX ON orders (customer_id, created_at)",
+      "plan_after": {
+        "root": {
+          "node_id": "0",
+          "parent_id": null,
+          "node_type": "Limit",
+          "relation_name": null,
+          "index_name": null,
+          "estimated_rows": 100.0,
+          "actual_rows": 100.0,
+          "estimated_cost": 81.29,
+          "actual_time_ms": 0.056,
+          "loops": 1,
+          "rows_removed_by_filter": null,
+          "shared_hit_blocks": 21,
+          "shared_read_blocks": 0,
+          "temp_read_blocks": 0,
+          "temp_written_blocks": 0,
+          "filter_condition": null,
+          "index_condition": null,
+          "join_condition": null,
+          "plan_width": 16,
+          "sort_method": null,
+          "hash_batches": null,
+          "output": [
+            "id",
+            "customer_id",
+            "created_at"
+          ],
+          "error_ratio": 1.0,
+          "filter_waste": null,
+          "exclusive_time_ms": 0.0050000000000000044,
+          "total_time_ms": 0.056,
+          "exclusive_temp_written_blocks": 0,
+          "exclusive_temp_read_blocks": 0,
+          "docs_examined": null,
+          "keys_examined": null,
+          "io_pressure": "memory",
+          "raw": {
+            "Node Type": "Limit",
+            "Parallel Aware": false,
+            "Async Capable": false,
+            "Startup Cost": 0.42,
+            "Total Cost": 81.29,
+            "Plan Rows": 100,
+            "Plan Width": 16,
+            "Actual Startup Time": 0.021,
+            "Actual Total Time": 0.056,
+            "Actual Rows": 100,
+            "Actual Loops": 1,
+            "Output": [
+              "id",
+              "customer_id",
+              "created_at"
+            ],
+            "Shared Hit Blocks": 21,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0,
+            "WAL Records": 0,
+            "WAL FPI": 0,
+            "WAL Bytes": 0
+          },
+          "children": [
+            {
+              "node_id": "0.0",
+              "parent_id": "0",
+              "node_type": "Index Scan",
+              "relation_name": "orders",
+              "index_name": "orders_customer_id_created_at_idx",
+              "estimated_rows": 7258.0,
+              "actual_rows": 100.0,
+              "estimated_cost": 5869.61,
+              "actual_time_ms": 0.051,
+              "loops": 1,
+              "rows_removed_by_filter": null,
+              "shared_hit_blocks": 21,
+              "shared_read_blocks": 0,
+              "temp_read_blocks": 0,
+              "temp_written_blocks": 0,
+              "filter_condition": null,
+              "index_condition": "(orders.customer_id = 1)",
+              "join_condition": null,
+              "plan_width": 16,
+              "sort_method": null,
+              "hash_batches": null,
+              "output": [
+                "id",
+                "customer_id",
+                "created_at"
+              ],
+              "error_ratio": 72.58,
+              "filter_waste": null,
+              "exclusive_time_ms": 0.051,
+              "total_time_ms": 0.051,
+              "exclusive_temp_written_blocks": 0,
+              "exclusive_temp_read_blocks": 0,
+              "docs_examined": null,
+              "keys_examined": null,
+              "io_pressure": "memory",
+              "raw": {
+                "Node Type": "Index Scan",
+                "Parent Relationship": "Outer",
+                "Parallel Aware": false,
+                "Async Capable": false,
+                "Scan Direction": "Forward",
+                "Index Name": "orders_customer_id_created_at_idx",
+                "Relation Name": "orders",
+                "Schema": "public",
+                "Alias": "orders",
+                "Startup Cost": 0.42,
+                "Total Cost": 5869.61,
+                "Plan Rows": 7258,
+                "Plan Width": 16,
+                "Actual Startup Time": 0.02,
+                "Actual Total Time": 0.051,
+                "Actual Rows": 100,
+                "Actual Loops": 1,
+                "Output": [
+                  "id",
+                  "customer_id",
+                  "created_at"
+                ],
+                "Index Cond": "(orders.customer_id = 1)",
+                "Rows Removed by Index Recheck": 0,
+                "Shared Hit Blocks": 21,
+                "Shared Read Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0,
+                "Local Hit Blocks": 0,
+                "Local Read Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Temp Written Blocks": 0,
+                "WAL Records": 0,
+                "WAL FPI": 0,
+                "WAL Bytes": 0
+              },
+              "children": []
+            }
+          ]
+        },
+        "planning_time_ms": 0.071,
+        "execution_time_ms": 0.067,
+        "settings": {
+          "work_mem": "64kB"
+        },
+        "executed": true,
+        "engine": "postgres",
+        "fingerprint": "9883f8a01d7c05fa"
+      }
+    },
+    "validated": true,
+    "captured_at": "2026-10-16T05:28:16.913721+00:00",
+    "checksum_method": "PostgreSQL row count plus SHA-256 of sorted SHA-256 row digests"
+  },
+  "sort": {
+    "sql": "SELECT id, customer_id, created_at FROM orders ORDER BY created_at LIMIT 15000",
+    "raw_plan": [
+      {
+        "Plan": {
+          "Node Type": "Limit",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 24050.2,
+          "Total Cost": 25775.2,
+          "Plan Rows": 15000,
+          "Plan Width": 16,
+          "Actual Startup Time": 29.268,
+          "Actual Total Time": 35.021,
+          "Actual Rows": 15000,
+          "Actual Loops": 1,
+          "Output": [
+            "id",
+            "customer_id",
+            "created_at"
+          ],
+          "Shared Hit Blocks": 1464,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 1661,
+          "Temp Written Blocks": 2645,
+          "WAL Records": 0,
+          "WAL FPI": 0,
+          "WAL Bytes": 0,
+          "Plans": [
+            {
+              "Node Type": "Gather Merge",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 24050.2,
+              "Total Cost": 40961.98,
+              "Plan Rows": 147059,
+              "Plan Width": 16,
+              "Actual Startup Time": 29.266,
+              "Actual Total Time": 34.296,
+              "Actual Rows": 15000,
+              "Actual Loops": 1,
+              "Output": [
+                "id",
+                "customer_id",
+                "created_at"
+              ],
+              "Workers Planned": 1,
+              "Workers Launched": 1,
+              "Shared Hit Blocks": 1464,
+              "Shared Read Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0,
+              "Local Hit Blocks": 0,
+              "Local Read Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Temp Read Blocks": 1661,
+              "Temp Written Blocks": 2645,
+              "WAL Records": 0,
+              "WAL FPI": 0,
+              "WAL Bytes": 0,
+              "Plans": [
+                {
+                  "Node Type": "Sort",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Startup Cost": 23050.19,
+                  "Total Cost": 23417.84,
+                  "Plan Rows": 147059,
+                  "Plan Width": 16,
+                  "Actual Startup Time": 26.527,
+                  "Actual Total Time": 27.047,
+                  "Actual Rows": 8319,
+                  "Actual Loops": 2,
+                  "Output": [
+                    "id",
+                    "customer_id",
+                    "created_at"
+                  ],
+                  "Sort Key": [
+                    "orders.created_at"
+                  ],
+                  "Sort Method": "external merge",
+                  "Sort Space Used": 3576,
+                  "Sort Space Type": "Disk",
+                  "Shared Hit Blocks": 1464,
+                  "Shared Read Blocks": 0,
+                  "Shared Dirtied Blocks": 0,
+                  "Shared Written Blocks": 0,
+                  "Local Hit Blocks": 0,
+                  "Local Read Blocks": 0,
+                  "Local Dirtied Blocks": 0,
+                  "Local Written Blocks": 0,
+                  "Temp Read Blocks": 1661,
+                  "Temp Written Blocks": 2645,
+                  "WAL Records": 0,
+                  "WAL FPI": 0,
+                  "WAL Bytes": 0,
+                  "Workers": [
+                    {
+                      "Worker Number": 0,
+                      "Actual Startup Time": 24.125,
+                      "Actual Total Time": 24.22,
+                      "Actual Rows": 1638,
+                      "Actual Loops": 1,
+                      "Sort Method": "external merge",
+                      "Sort Space Used": 2880,
+                      "Sort Space Type": "Disk",
+                      "Shared Hit Blocks": 692,
+                      "Shared Read Blocks": 0,
+                      "Shared Dirtied Blocks": 0,
+                      "Shared Written Blocks": 0,
+                      "Local Hit Blocks": 0,
+                      "Local Read Blocks": 0,
+                      "Local Dirtied Blocks": 0,
+                      "Local Written Blocks": 0,
+                      "Temp Read Blocks": 721,
+                      "Temp Written Blocks": 1177,
+                      "WAL Records": 0,
+                      "WAL FPI": 0,
+                      "WAL Bytes": 0
+                    }
+                  ],
+                  "Plans": [
+                    {
+                      "Node Type": "Seq Scan",
+                      "Parent Relationship": "Outer",
+                      "Parallel Aware": true,
+                      "Async Capable": false,
+                      "Relation Name": "orders",
+                      "Schema": "public",
+                      "Alias": "orders",
+                      "Startup Cost": 0.0,
+                      "Total Cost": 2878.59,
+                      "Plan Rows": 147059,
+                      "Plan Width": 16,
+                      "Actual Startup Time": 0.01,
+                      "Actual Total Time": 7.054,
+                      "Actual Rows": 125000,
+                      "Actual Loops": 2,
+                      "Output": [
+                        "id",
+                        "customer_id",
+                        "created_at"
+                      ],
+                      "Shared Hit Blocks": 1408,
+                      "Shared Read Blocks": 0,
+                      "Shared Dirtied Blocks": 0,
+                      "Shared Written Blocks": 0,
+                      "Local Hit Blocks": 0,
+                      "Local Read Blocks": 0,
+                      "Local Dirtied Blocks": 0,
+                      "Local Written Blocks": 0,
+                      "Temp Read Blocks": 0,
+                      "Temp Written Blocks": 0,
+                      "WAL Records": 0,
+                      "WAL FPI": 0,
+                      "WAL Bytes": 0,
+                      "Workers": [
+                        {
+                          "Worker Number": 0,
+                          "Actual Startup Time": 0.009,
+                          "Actual Total Time": 6.518,
+                          "Actual Rows": 111250,
+                          "Actual Loops": 1,
+                          "Shared Hit Blocks": 636,
+                          "Shared Read Blocks": 0,
+                          "Shared Dirtied Blocks": 0,
+                          "Shared Written Blocks": 0,
+                          "Local Hit Blocks": 0,
+                          "Local Read Blocks": 0,
+                          "Local Dirtied Blocks": 0,
+                          "Local Written Blocks": 0,
+                          "Temp Read Blocks": 0,
+                          "Temp Written Blocks": 0,
+                          "WAL Records": 0,
+                          "WAL FPI": 0,
+                          "WAL Bytes": 0
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "Settings": {
+          "work_mem": "64kB"
+        },
+        "Planning": {
+          "Shared Hit Blocks": 24,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.111,
+        "Triggers": [],
+        "Execution Time": 38.132
+      }
+    ],
+    "plan": {
+      "root": {
+        "node_id": "0",
+        "parent_id": null,
+        "node_type": "Limit",
+        "relation_name": null,
+        "index_name": null,
+        "estimated_rows": 15000.0,
+        "actual_rows": 15000.0,
+        "estimated_cost": 25775.2,
+        "actual_time_ms": 35.021,
+        "loops": 1,
+        "rows_removed_by_filter": null,
+        "shared_hit_blocks": 1464,
+        "shared_read_blocks": 0,
+        "temp_read_blocks": 1661,
+        "temp_written_blocks": 2645,
+        "filter_condition": null,
+        "index_condition": null,
+        "join_condition": null,
+        "plan_width": 16,
+        "sort_method": null,
+        "hash_batches": null,
+        "output": [
+          "id",
+          "customer_id",
+          "created_at"
+        ],
+        "error_ratio": 1.0,
+        "filter_waste": null,
+        "exclusive_time_ms": 0.7250000000000014,
+        "total_time_ms": 35.021,
+        "exclusive_temp_written_blocks": 0,
+        "exclusive_temp_read_blocks": 0,
+        "docs_examined": null,
+        "keys_examined": null,
+        "io_pressure": "temp",
+        "raw": {
+          "Node Type": "Limit",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 24050.2,
+          "Total Cost": 25775.2,
+          "Plan Rows": 15000,
+          "Plan Width": 16,
+          "Actual Startup Time": 29.268,
+          "Actual Total Time": 35.021,
+          "Actual Rows": 15000,
+          "Actual Loops": 1,
+          "Output": [
+            "id",
+            "customer_id",
+            "created_at"
+          ],
+          "Shared Hit Blocks": 1464,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 1661,
+          "Temp Written Blocks": 2645,
+          "WAL Records": 0,
+          "WAL FPI": 0,
+          "WAL Bytes": 0
+        },
+        "children": [
+          {
+            "node_id": "0.0",
+            "parent_id": "0",
+            "node_type": "Gather Merge",
+            "relation_name": null,
+            "index_name": null,
+            "estimated_rows": 147059.0,
+            "actual_rows": 15000.0,
+            "estimated_cost": 40961.98,
+            "actual_time_ms": 34.296,
+            "loops": 1,
+            "rows_removed_by_filter": null,
+            "shared_hit_blocks": 1464,
+            "shared_read_blocks": 0,
+            "temp_read_blocks": 1661,
+            "temp_written_blocks": 2645,
+            "filter_condition": null,
+            "index_condition": null,
+            "join_condition": null,
+            "plan_width": 16,
+            "sort_method": null,
+            "hash_batches": null,
+            "output": [
+              "id",
+              "customer_id",
+              "created_at"
+            ],
+            "error_ratio": 9.803933333333333,
+            "filter_waste": null,
+            "exclusive_time_ms": 7.248999999999999,
+            "total_time_ms": 34.296,
+            "exclusive_temp_written_blocks": 0,
+            "exclusive_temp_read_blocks": 0,
+            "docs_examined": null,
+            "keys_examined": null,
+            "io_pressure": "temp",
+            "raw": {
+              "Node Type": "Gather Merge",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 24050.2,
+              "Total Cost": 40961.98,
+              "Plan Rows": 147059,
+              "Plan Width": 16,
+              "Actual Startup Time": 29.266,
+              "Actual Total Time": 34.296,
+              "Actual Rows": 15000,
+              "Actual Loops": 1,
+              "Output": [
+                "id",
+                "customer_id",
+                "created_at"
+              ],
+              "Workers Planned": 1,
+              "Workers Launched": 1,
+              "Shared Hit Blocks": 1464,
+              "Shared Read Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0,
+              "Local Hit Blocks": 0,
+              "Local Read Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Temp Read Blocks": 1661,
+              "Temp Written Blocks": 2645,
+              "WAL Records": 0,
+              "WAL FPI": 0,
+              "WAL Bytes": 0
+            },
+            "children": [
+              {
+                "node_id": "0.0.0",
+                "parent_id": "0.0",
+                "node_type": "Sort",
+                "relation_name": null,
+                "index_name": null,
+                "estimated_rows": 147059.0,
+                "actual_rows": 8319.0,
+                "estimated_cost": 23417.84,
+                "actual_time_ms": 27.047,
+                "loops": 2,
+                "rows_removed_by_filter": null,
+                "shared_hit_blocks": 1464,
+                "shared_read_blocks": 0,
+                "temp_read_blocks": 1661,
+                "temp_written_blocks": 2645,
+                "filter_condition": null,
+                "index_condition": null,
+                "join_condition": null,
+                "plan_width": 16,
+                "sort_method": "external merge",
+                "hash_batches": null,
+                "output": [
+                  "id",
+                  "customer_id",
+                  "created_at"
+                ],
+                "error_ratio": 17.677485274672435,
+                "filter_waste": null,
+                "exclusive_time_ms": 19.993000000000002,
+                "total_time_ms": 27.047,
+                "exclusive_temp_written_blocks": 2645,
+                "exclusive_temp_read_blocks": 1661,
+                "docs_examined": null,
+                "keys_examined": null,
+                "io_pressure": "temp",
+                "raw": {
+                  "Node Type": "Sort",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Startup Cost": 23050.19,
+                  "Total Cost": 23417.84,
+                  "Plan Rows": 147059,
+                  "Plan Width": 16,
+                  "Actual Startup Time": 26.527,
+                  "Actual Total Time": 27.047,
+                  "Actual Rows": 8319,
+                  "Actual Loops": 2,
+                  "Output": [
+                    "id",
+                    "customer_id",
+                    "created_at"
+                  ],
+                  "Sort Key": [
+                    "orders.created_at"
+                  ],
+                  "Sort Method": "external merge",
+                  "Sort Space Used": 3576,
+                  "Sort Space Type": "Disk",
+                  "Shared Hit Blocks": 1464,
+                  "Shared Read Blocks": 0,
+                  "Shared Dirtied Blocks": 0,
+                  "Shared Written Blocks": 0,
+                  "Local Hit Blocks": 0,
+                  "Local Read Blocks": 0,
+                  "Local Dirtied Blocks": 0,
+                  "Local Written Blocks": 0,
+                  "Temp Read Blocks": 1661,
+                  "Temp Written Blocks": 2645,
+                  "WAL Records": 0,
+                  "WAL FPI": 0,
+                  "WAL Bytes": 0,
+                  "Workers": [
+                    {
+                      "Worker Number": 0,
+                      "Actual Startup Time": 24.125,
+                      "Actual Total Time": 24.22,
+                      "Actual Rows": 1638,
+                      "Actual Loops": 1,
+                      "Sort Method": "external merge",
+                      "Sort Space Used": 2880,
+                      "Sort Space Type": "Disk",
+                      "Shared Hit Blocks": 692,
+                      "Shared Read Blocks": 0,
+                      "Shared Dirtied Blocks": 0,
+                      "Shared Written Blocks": 0,
+                      "Local Hit Blocks": 0,
+                      "Local Read Blocks": 0,
+                      "Local Dirtied Blocks": 0,
+                      "Local Written Blocks": 0,
+                      "Temp Read Blocks": 721,
+                      "Temp Written Blocks": 1177,
+                      "WAL Records": 0,
+                      "WAL FPI": 0,
+                      "WAL Bytes": 0
+                    }
+                  ]
+                },
+                "children": [
+                  {
+                    "node_id": "0.0.0.0",
+                    "parent_id": "0.0.0",
+                    "node_type": "Seq Scan",
+                    "relation_name": "orders",
+                    "index_name": null,
+                    "estimated_rows": 147059.0,
+                    "actual_rows": 125000.0,
+                    "estimated_cost": 2878.59,
+                    "actual_time_ms": 7.054,
+                    "loops": 2,
+                    "rows_removed_by_filter": null,
+                    "shared_hit_blocks": 1408,
+                    "shared_read_blocks": 0,
+                    "temp_read_blocks": 0,
+                    "temp_written_blocks": 0,
+                    "filter_condition": null,
+                    "index_condition": null,
+                    "join_condition": null,
+                    "plan_width": 16,
+                    "sort_method": null,
+                    "hash_batches": null,
+                    "output": [
+                      "id",
+                      "customer_id",
+                      "created_at"
+                    ],
+                    "error_ratio": 1.176472,
+                    "filter_waste": null,
+                    "exclusive_time_ms": 7.054,
+                    "total_time_ms": 7.054,
+                    "exclusive_temp_written_blocks": 0,
+                    "exclusive_temp_read_blocks": 0,
+                    "docs_examined": null,
+                    "keys_examined": null,
+                    "io_pressure": "memory",
+                    "raw": {
+                      "Node Type": "Seq Scan",
+                      "Parent Relationship": "Outer",
+                      "Parallel Aware": true,
+                      "Async Capable": false,
+                      "Relation Name": "orders",
+                      "Schema": "public",
+                      "Alias": "orders",
+                      "Startup Cost": 0.0,
+                      "Total Cost": 2878.59,
+                      "Plan Rows": 147059,
+                      "Plan Width": 16,
+                      "Actual Startup Time": 0.01,
+                      "Actual Total Time": 7.054,
+                      "Actual Rows": 125000,
+                      "Actual Loops": 2,
+                      "Output": [
+                        "id",
+                        "customer_id",
+                        "created_at"
+                      ],
+                      "Shared Hit Blocks": 1408,
+                      "Shared Read Blocks": 0,
+                      "Shared Dirtied Blocks": 0,
+                      "Shared Written Blocks": 0,
+                      "Local Hit Blocks": 0,
+                      "Local Read Blocks": 0,
+                      "Local Dirtied Blocks": 0,
+                      "Local Written Blocks": 0,
+                      "Temp Read Blocks": 0,
+                      "Temp Written Blocks": 0,
+                      "WAL Records": 0,
+                      "WAL FPI": 0,
+                      "WAL Bytes": 0,
+                      "Workers": [
+                        {
+                          "Worker Number": 0,
+                          "Actual Startup Time": 0.009,
+                          "Actual Total Time": 6.518,
+                          "Actual Rows": 111250,
+                          "Actual Loops": 1,
+                          "Shared Hit Blocks": 636,
+                          "Shared Read Blocks": 0,
+                          "Shared Dirtied Blocks": 0,
+                          "Shared Written Blocks": 0,
+                          "Local Hit Blocks": 0,
+                          "Local Read Blocks": 0,
+                          "Local Dirtied Blocks": 0,
+                          "Local Written Blocks": 0,
+                          "Temp Read Blocks": 0,
+                          "Temp Written Blocks": 0,
+                          "WAL Records": 0,
+                          "WAL FPI": 0,
+                          "WAL Bytes": 0
+                        }
+                      ]
+                    },
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "planning_time_ms": 0.111,
+      "execution_time_ms": 38.132,
+      "settings": {
+        "work_mem": "64kB"
+      },
+      "executed": true,
+      "engine": "postgres",
+      "fingerprint": "21a0afaba03677f1"
+    },
+    "findings": [
+      {
+        "id": 1,
+        "rule_id": "PG_SORT_SPILL",
+        "severity": "critical",
+        "title": "Sort spilled to disk",
+        "summary": "Sort used 'external merge' and wrote 2,645 temporary blocks.",
+        "evidence": {
+          "sort_method": "external merge",
+          "temp_written_blocks": 2645,
+          "temp_read_blocks": 1661,
+          "sort_space_used_kb": 3576,
+          "exclusive_time_ms": 19.993000000000002,
+          "time_share": 0.5243102905696004,
+          "work_mem": "64kB"
+        },
+        "node_ids": [
+          "0.0.0"
+        ],
+        "confidence": 0.95,
+        "next_actions": [
+          "Reduce the number of rows sorted (filter earlier, select fewer columns)",
+          "Add an index matching the ORDER BY so the sort can be skipped",
+          "Test a higher work_mem for the session before changing it globally"
+        ]
+      },
+      {
+        "id": 2,
+        "rule_id": "PG_CARDINALITY_MISESTIMATE",
+        "severity": "warning",
+        "title": "Planner row estimate is far from reality",
+        "summary": "Sort estimated 147,059 rows but produced 8,319 (18x off).",
+        "evidence": {
+          "estimated_rows": 147059.0,
+          "actual_rows": 8319.0,
+          "error_ratio": 17.677485274672435,
+          "direction": "overestimated",
+          "loops": 2,
+          "table": null
+        },
+        "node_ids": [
+          "0.0.0"
+        ],
+        "confidence": 0.9,
+        "next_actions": [
+          "Run ANALYZE on the involved tables",
+          "Raise the statistics target for the filtered columns or create extended statistics for correlated columns"
+        ]
+      }
+    ],
+    "comparison": {
+      "cost_reduction": 0.9797440950991652,
+      "rows_reduction": 0.0,
+      "plan_risk_reduction": 1.0,
+      "operator_improvement": 1.0,
+      "planner_score": 0.7429104332847078,
+      "uses_candidate": true,
+      "removed_operators": [
+        "Gather Merge",
+        "Seq Scan",
+        "Sort"
+      ],
+      "added_operators": [
+        "Index Scan"
+      ],
+      "cost_before": 25775.2,
+      "cost_after": 522.1
+    },
+    "seed_sql": "CREATE TABLE orders AS SELECT n AS id, n % 1000 AS customer_id, TIMESTAMP '2022-01-01' + n * INTERVAL '1 second' AS created_at FROM generate_series(1,250000) n; ANALYZE orders;",
+    "benchmark": {
+      "before": {
+        "n": 7,
+        "median_ms": 35.501,
+        "p95_ms": 40.6661,
+        "mean_ms": 36.16285714285714,
+        "stdev_ms": 3.1956149866429704,
+        "cv": 0.08836732601130123,
+        "min_ms": 32.614,
+        "max_ms": 41.636
+      },
+      "after": {
+        "n": 7,
+        "median_ms": 2.047,
+        "p95_ms": 2.1892,
+        "mean_ms": 2.0475714285714286,
+        "stdev_ms": 0.11255496012001899,
+        "cv": 0.054969979825586615,
+        "min_ms": 1.908,
+        "max_ms": 2.2
+      },
+      "before_samples": [
+        {
+          "execution_ms": 32.614,
+          "planning_ms": 0.05,
+          "rows": 15000,
+          "shared_hit_blocks": 1464,
+          "shared_read_blocks": 0,
+          "temp_blocks": 4304
+        },
+        {
+          "execution_ms": 38.403,
+          "planning_ms": 0.057,
+          "rows": 15000,
+          "shared_hit_blocks": 1464,
+          "shared_read_blocks": 0,
+          "temp_blocks": 4305
+        },
+        {
+          "execution_ms": 34.031,
+          "planning_ms": 0.048,
+          "rows": 15000,
+          "shared_hit_blocks": 1464,
+          "shared_read_blocks": 0,
+          "temp_blocks": 4306
+        },
+        {
+          "execution_ms": 33.505,
+          "planning_ms": 0.053,
+          "rows": 15000,
+          "shared_hit_blocks": 1464,
+          "shared_read_blocks": 0,
+          "temp_blocks": 4301
+        },
+        {
+          "execution_ms": 41.636,
+          "planning_ms": 0.049,
+          "rows": 15000,
+          "shared_hit_blocks": 1464,
+          "shared_read_blocks": 0,
+          "temp_blocks": 4305
+        },
+        {
+          "execution_ms": 37.45,
+          "planning_ms": 0.048,
+          "rows": 15000,
+          "shared_hit_blocks": 1464,
+          "shared_read_blocks": 0,
+          "temp_blocks": 4307
+        },
+        {
+          "execution_ms": 35.501,
+          "planning_ms": 0.044,
+          "rows": 15000,
+          "shared_hit_blocks": 1464,
+          "shared_read_blocks": 0,
+          "temp_blocks": 4306
+        }
+      ],
+      "after_samples": [
+        {
+          "execution_ms": 2.2,
+          "planning_ms": 0.019,
+          "rows": 15000,
+          "shared_hit_blocks": 125,
+          "shared_read_blocks": 0,
+          "temp_blocks": 0
+        },
+        {
+          "execution_ms": 1.908,
+          "planning_ms": 0.043,
+          "rows": 15000,
+          "shared_hit_blocks": 125,
+          "shared_read_blocks": 0,
+          "temp_blocks": 0
+        },
+        {
+          "execution_ms": 1.934,
+          "planning_ms": 0.021,
+          "rows": 15000,
+          "shared_hit_blocks": 125,
+          "shared_read_blocks": 0,
+          "temp_blocks": 0
+        },
+        {
+          "execution_ms": 2.047,
+          "planning_ms": 0.029,
+          "rows": 15000,
+          "shared_hit_blocks": 125,
+          "shared_read_blocks": 0,
+          "temp_blocks": 0
+        },
+        {
+          "execution_ms": 1.982,
+          "planning_ms": 0.05,
+          "rows": 15000,
+          "shared_hit_blocks": 125,
+          "shared_read_blocks": 0,
+          "temp_blocks": 0
+        },
+        {
+          "execution_ms": 2.098,
+          "planning_ms": 0.034,
+          "rows": 15000,
+          "shared_hit_blocks": 125,
+          "shared_read_blocks": 0,
+          "temp_blocks": 0
+        },
+        {
+          "execution_ms": 2.164,
+          "planning_ms": 0.094,
+          "rows": 15000,
+          "shared_hit_blocks": 125,
+          "shared_read_blocks": 0,
+          "temp_blocks": 0
+        }
+      ],
+      "improvement_pct": 94.23396524041577,
+      "index_size_bytes": 5644288,
+      "index_build_ms": 52.57759999949485,
+      "plan_fingerprint_before": "21a0afaba03677f1",
+      "plan_fingerprint_after": "6a571b1eada54a57",
+      "checksum_match": true,
+      "index_used": true,
+      "warnings": [],
+      "pg_version": "PostgreSQL 16.15 (Debian 16.15-1.pgdg13+2)",
+      "settings": {
+        "effective_cache_size": "524288",
+        "max_parallel_workers_per_gather": "2",
+        "random_page_cost": "4",
+        "shared_buffers": "16384",
+        "work_mem": "64",
+        "checksum_algorithm": "sha256",
+        "checksum_before": "15000:e7484b43dbd4c0de7829f342e8649e2baba37a6e58ba1eb43b880781266ed6df",
+        "checksum_after": "15000:e7484b43dbd4c0de7829f342e8649e2baba37a6e58ba1eb43b880781266ed6df"
+      },
+      "dataset_snapshot": "319a16773929",
+      "ddl": "CREATE INDEX ON orders (created_at)",
+      "plan_after": {
+        "root": {
+          "node_id": "0",
+          "parent_id": null,
+          "node_type": "Limit",
+          "relation_name": null,
+          "index_name": null,
+          "estimated_rows": 15000.0,
+          "actual_rows": 15000.0,
+          "estimated_cost": 475.44,
+          "actual_time_ms": 1.778,
+          "loops": 1,
+          "rows_removed_by_filter": null,
+          "shared_hit_blocks": 125,
+          "shared_read_blocks": 0,
+          "temp_read_blocks": 0,
+          "temp_written_blocks": 0,
+          "filter_condition": null,
+          "index_condition": null,
+          "join_condition": null,
+          "plan_width": 16,
+          "sort_method": null,
+          "hash_batches": null,
+          "output": [
+            "id",
+            "customer_id",
+            "created_at"
+          ],
+          "error_ratio": 1.0,
+          "filter_waste": null,
+          "exclusive_time_ms": 0.6950000000000001,
+          "total_time_ms": 1.778,
+          "exclusive_temp_written_blocks": 0,
+          "exclusive_temp_read_blocks": 0,
+          "docs_examined": null,
+          "keys_examined": null,
+          "io_pressure": "memory",
+          "raw": {
+            "Node Type": "Limit",
+            "Parallel Aware": false,
+            "Async Capable": false,
+            "Startup Cost": 0.42,
+            "Total Cost": 475.44,
+            "Plan Rows": 15000,
+            "Plan Width": 16,
+            "Actual Startup Time": 0.039,
+            "Actual Total Time": 1.778,
+            "Actual Rows": 15000,
+            "Actual Loops": 1,
+            "Output": [
+              "id",
+              "customer_id",
+              "created_at"
+            ],
+            "Shared Hit Blocks": 125,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0,
+            "WAL Records": 0,
+            "WAL FPI": 0,
+            "WAL Bytes": 0
+          },
+          "children": [
+            {
+              "node_id": "0.0",
+              "parent_id": "0",
+              "node_type": "Index Scan",
+              "relation_name": "orders",
+              "index_name": "orders_created_at_idx",
+              "estimated_rows": 250000.0,
+              "actual_rows": 15000.0,
+              "estimated_cost": 7917.42,
+              "actual_time_ms": 1.083,
+              "loops": 1,
+              "rows_removed_by_filter": null,
+              "shared_hit_blocks": 125,
+              "shared_read_blocks": 0,
+              "temp_read_blocks": 0,
+              "temp_written_blocks": 0,
+              "filter_condition": null,
+              "index_condition": null,
+              "join_condition": null,
+              "plan_width": 16,
+              "sort_method": null,
+              "hash_batches": null,
+              "output": [
+                "id",
+                "customer_id",
+                "created_at"
+              ],
+              "error_ratio": 16.666666666666668,
+              "filter_waste": null,
+              "exclusive_time_ms": 1.083,
+              "total_time_ms": 1.083,
+              "exclusive_temp_written_blocks": 0,
+              "exclusive_temp_read_blocks": 0,
+              "docs_examined": null,
+              "keys_examined": null,
+              "io_pressure": "memory",
+              "raw": {
+                "Node Type": "Index Scan",
+                "Parent Relationship": "Outer",
+                "Parallel Aware": false,
+                "Async Capable": false,
+                "Scan Direction": "Forward",
+                "Index Name": "orders_created_at_idx",
+                "Relation Name": "orders",
+                "Schema": "public",
+                "Alias": "orders",
+                "Startup Cost": 0.42,
+                "Total Cost": 7917.42,
+                "Plan Rows": 250000,
+                "Plan Width": 16,
+                "Actual Startup Time": 0.038,
+                "Actual Total Time": 1.083,
+                "Actual Rows": 15000,
+                "Actual Loops": 1,
+                "Output": [
+                  "id",
+                  "customer_id",
+                  "created_at"
+                ],
+                "Shared Hit Blocks": 125,
+                "Shared Read Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0,
+                "Local Hit Blocks": 0,
+                "Local Read Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Temp Written Blocks": 0,
+                "WAL Records": 0,
+                "WAL FPI": 0,
+                "WAL Bytes": 0
+              },
+              "children": []
+            }
+          ]
+        },
+        "planning_time_ms": 0.094,
+        "execution_time_ms": 2.164,
+        "settings": {
+          "work_mem": "64kB"
+        },
+        "executed": true,
+        "engine": "postgres",
+        "fingerprint": "6a571b1eada54a57"
+      }
+    },
+    "validated": true,
+    "captured_at": "2026-10-16T05:28:18.383414+00:00",
+    "checksum_method": "PostgreSQL row count plus SHA-256 of sorted SHA-256 row digests"
+  },
+  "rejected": {
+    "sql": "SELECT id FROM orders WHERE customer_id = 1",
+    "raw_plan": [
+      {
+        "Plan": {
+          "Node Type": "Seq Scan",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Relation Name": "orders",
+          "Schema": "public",
+          "Alias": "orders",
+          "Startup Cost": 0.0,
+          "Total Cost": 315.99,
+          "Plan Rows": 1,
+          "Plan Width": 4,
+          "Actual Startup Time": 0.41,
+          "Actual Total Time": 1.103,
+          "Actual Rows": 10000,
+          "Actual Loops": 1,
+          "Output": [
+            "id"
+          ],
+          "Filter": "(orders.customer_id = 1)",
+          "Rows Removed by Filter": 0,
+          "Shared Hit Blocks": 107,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "WAL Records": 44,
+          "WAL FPI": 0,
+          "WAL Bytes": 22308
+        },
+        "Settings": {
+          "work_mem": "64kB"
+        },
+        "Planning": {
+          "Shared Hit Blocks": 15,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.108,
+        "Triggers": [],
+        "Execution Time": 1.336
+      }
+    ],
+    "plan": {
+      "root": {
+        "node_id": "0",
+        "parent_id": null,
+        "node_type": "Seq Scan",
+        "relation_name": "orders",
+        "index_name": null,
+        "estimated_rows": 1.0,
+        "actual_rows": 10000.0,
+        "estimated_cost": 315.99,
+        "actual_time_ms": 1.103,
+        "loops": 1,
+        "rows_removed_by_filter": 0,
+        "shared_hit_blocks": 107,
+        "shared_read_blocks": 0,
+        "temp_read_blocks": 0,
+        "temp_written_blocks": 0,
+        "filter_condition": "(orders.customer_id = 1)",
+        "index_condition": null,
+        "join_condition": null,
+        "plan_width": 4,
+        "sort_method": null,
+        "hash_batches": null,
+        "output": [
+          "id"
+        ],
+        "error_ratio": 10000.0,
+        "filter_waste": 0.0,
+        "exclusive_time_ms": 1.103,
+        "total_time_ms": 1.103,
+        "exclusive_temp_written_blocks": 0,
+        "exclusive_temp_read_blocks": 0,
+        "docs_examined": null,
+        "keys_examined": null,
+        "io_pressure": "memory",
+        "raw": {
+          "Node Type": "Seq Scan",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Relation Name": "orders",
+          "Schema": "public",
+          "Alias": "orders",
+          "Startup Cost": 0.0,
+          "Total Cost": 315.99,
+          "Plan Rows": 1,
+          "Plan Width": 4,
+          "Actual Startup Time": 0.41,
+          "Actual Total Time": 1.103,
+          "Actual Rows": 10000,
+          "Actual Loops": 1,
+          "Output": [
+            "id"
+          ],
+          "Filter": "(orders.customer_id = 1)",
+          "Rows Removed by Filter": 0,
+          "Shared Hit Blocks": 107,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "WAL Records": 44,
+          "WAL FPI": 0,
+          "WAL Bytes": 22308
+        },
+        "children": []
+      },
+      "planning_time_ms": 0.108,
+      "execution_time_ms": 1.336,
+      "settings": {
+        "work_mem": "64kB"
+      },
+      "executed": true,
+      "engine": "postgres",
+      "fingerprint": "82acf94e49dc85e7"
+    },
+    "findings": [
+      {
+        "id": 1,
+        "rule_id": "PG_CARDINALITY_MISESTIMATE",
+        "severity": "critical",
+        "title": "Planner row estimate is far from reality",
+        "summary": "Seq Scan estimated 1 rows but produced 10,000 (10,000x off).",
+        "evidence": {
+          "estimated_rows": 1.0,
+          "actual_rows": 10000.0,
+          "error_ratio": 10000.0,
+          "direction": "underestimated",
+          "loops": 1,
+          "table": "orders"
+        },
+        "node_ids": [
+          "0"
+        ],
+        "confidence": 0.9,
+        "next_actions": [
+          "Run ANALYZE on the involved tables",
+          "Raise the statistics target for the filtered columns or create extended statistics for correlated columns"
+        ]
+      }
+    ],
+    "comparison": {
+      "cost_reduction": 0.9745245102693123,
+      "rows_reduction": 0.9999,
+      "plan_risk_reduction": 1.0,
+      "operator_improvement": 0.7,
+      "planner_score": 0.9310585785942592,
+      "uses_candidate": true,
+      "removed_operators": [
+        "Seq Scan"
+      ],
+      "added_operators": [
+        "Index Scan"
+      ],
+      "cost_before": 315.99,
+      "cost_after": 8.05
+    },
+    "seed_sql": "CREATE TABLE orders AS SELECT n AS id, n AS customer_id FROM generate_series(1,10000) n; ANALYZE orders; UPDATE orders SET customer_id = 1;",
+    "benchmark": {
+      "before": {
+        "n": 7,
+        "median_ms": 0.852,
+        "p95_ms": 0.9712999999999998,
+        "mean_ms": 0.8737142857142857,
+        "stdev_ms": 0.06139140625449753,
+        "cv": 0.07026485346329017,
+        "min_ms": 0.832,
+        "max_ms": 1.007
+      },
+      "after": {
+        "n": 7,
+        "median_ms": 0.85,
+        "p95_ms": 1.053,
+        "mean_ms": 0.8855714285714286,
+        "stdev_ms": 0.1100164489865904,
+        "cv": 0.1242321572682905,
+        "min_ms": 0.807,
+        "max_ms": 1.131
+      },
+      "before_samples": [
+        {
+          "execution_ms": 0.852,
+          "planning_ms": 0.019,
+          "rows": 10000,
+          "shared_hit_blocks": 107,
+          "shared_read_blocks": 0,
+          "temp_blocks": 0
+        },
+        {
+          "execution_ms": 0.84,
+          "planning_ms": 0.019,
+          "rows": 10000,
+          "shared_hit_blocks": 107,
+          "shared_read_blocks": 0,
+          "temp_blocks": 0
+        },
+        {
+          "execution_ms": 0.888,
+          "planning_ms": 0.016,
+          "rows": 10000,
+          "shared_hit_blocks": 107,
+          "shared_read_blocks": 0,
+          "temp_blocks": 0
+        },
+        {
+          "execution_ms": 1.007,
+          "planning_ms": 0.048,
+          "rows": 10000,
+          "shared_hit_blocks": 107,
+          "shared_read_blocks": 0,
+          "temp_blocks": 0
+        },
+        {
+          "execution_ms": 0.832,
+          "planning_ms": 0.022,
+          "rows": 10000,
+          "shared_hit_blocks": 107,
+          "shared_read_blocks": 0,
+          "temp_blocks": 0
+        },
+        {
+          "execution_ms": 0.852,
+          "planning_ms": 0.019,
+          "rows": 10000,
+          "shared_hit_blocks": 107,
+          "shared_read_blocks": 0,
+          "temp_blocks": 0
+        },
+        {
+          "execution_ms": 0.845,
+          "planning_ms": 0.047,
+          "rows": 10000,
+          "shared_hit_blocks": 107,
+          "shared_read_blocks": 0,
+          "temp_blocks": 0
+        }
+      ],
+      "after_samples": [
+        {
+          "execution_ms": 0.842,
+          "planning_ms": 0.018,
+          "rows": 10000,
+          "shared_hit_blocks": 107,
+          "shared_read_blocks": 0,
+          "temp_blocks": 0
+        },
+        {
+          "execution_ms": 0.85,
+          "planning_ms": 0.058,
+          "rows": 10000,
+          "shared_hit_blocks": 107,
+          "shared_read_blocks": 0,
+          "temp_blocks": 0
+        },
+        {
+          "execution_ms": 0.807,
+          "planning_ms": 0.057,
+          "rows": 10000,
+          "shared_hit_blocks": 107,
+          "shared_read_blocks": 0,
+          "temp_blocks": 0
+        },
+        {
+          "execution_ms": 0.858,
+          "planning_ms": 0.028,
+          "rows": 10000,
+          "shared_hit_blocks": 107,
+          "shared_read_blocks": 0,
+          "temp_blocks": 0
+        },
+        {
+          "execution_ms": 1.131,
+          "planning_ms": 0.085,
+          "rows": 10000,
+          "shared_hit_blocks": 107,
+          "shared_read_blocks": 0,
+          "temp_blocks": 0
+        },
+        {
+          "execution_ms": 0.871,
+          "planning_ms": 0.047,
+          "rows": 10000,
+          "shared_hit_blocks": 107,
+          "shared_read_blocks": 0,
+          "temp_blocks": 0
+        },
+        {
+          "execution_ms": 0.84,
+          "planning_ms": 0.024,
+          "rows": 10000,
+          "shared_hit_blocks": 107,
+          "shared_read_blocks": 0,
+          "temp_blocks": 0
+        }
+      ],
+      "improvement_pct": 0.2347417840375589,
+      "index_size_bytes": 90112,
+      "index_build_ms": 9.487500001341687,
+      "plan_fingerprint_before": "82acf94e49dc85e7",
+      "plan_fingerprint_after": "82acf94e49dc85e7",
+      "checksum_match": true,
+      "index_used": false,
+      "warnings": [
+        "The new index was not used by the query's final plan, so any speed difference is not attributable to it."
+      ],
+      "pg_version": "PostgreSQL 16.15 (Debian 16.15-1.pgdg13+2)",
+      "settings": {
+        "effective_cache_size": "524288",
+        "max_parallel_workers_per_gather": "2",
+        "random_page_cost": "4",
+        "shared_buffers": "16384",
+        "work_mem": "64",
+        "checksum_algorithm": "sha256",
+        "checksum_before": "10000:b69afe948ed1308bfed312e818001084a74ff3825641820ed0f40807c2b9d3ab",
+        "checksum_after": "10000:b69afe948ed1308bfed312e818001084a74ff3825641820ed0f40807c2b9d3ab"
+      },
+      "dataset_snapshot": "7769e89bb3ec",
+      "ddl": "CREATE INDEX ON orders (customer_id)",
+      "plan_after": {
+        "root": {
+          "node_id": "0",
+          "parent_id": null,
+          "node_type": "Seq Scan",
+          "relation_name": "orders",
+          "index_name": null,
+          "estimated_rows": 10000.0,
+          "actual_rows": 10000.0,
+          "estimated_cost": 232.0,
+          "actual_time_ms": 0.608,
+          "loops": 1,
+          "rows_removed_by_filter": 0,
+          "shared_hit_blocks": 107,
+          "shared_read_blocks": 0,
+          "temp_read_blocks": 0,
+          "temp_written_blocks": 0,
+          "filter_condition": "(orders.customer_id = 1)",
+          "index_condition": null,
+          "join_condition": null,
+          "plan_width": 4,
+          "sort_method": null,
+          "hash_batches": null,
+          "output": [
+            "id"
+          ],
+          "error_ratio": 1.0,
+          "filter_waste": 0.0,
+          "exclusive_time_ms": 0.608,
+          "total_time_ms": 0.608,
+          "exclusive_temp_written_blocks": 0,
+          "exclusive_temp_read_blocks": 0,
+          "docs_examined": null,
+          "keys_examined": null,
+          "io_pressure": "memory",
+          "raw": {
+            "Node Type": "Seq Scan",
+            "Parallel Aware": false,
+            "Async Capable": false,
+            "Relation Name": "orders",
+            "Schema": "public",
+            "Alias": "orders",
+            "Startup Cost": 0.0,
+            "Total Cost": 232.0,
+            "Plan Rows": 10000,
+            "Plan Width": 4,
+            "Actual Startup Time": 0.038,
+            "Actual Total Time": 0.608,
+            "Actual Rows": 10000,
+            "Actual Loops": 1,
+            "Output": [
+              "id"
+            ],
+            "Filter": "(orders.customer_id = 1)",
+            "Rows Removed by Filter": 0,
+            "Shared Hit Blocks": 107,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0,
+            "WAL Records": 0,
+            "WAL FPI": 0,
+            "WAL Bytes": 0
+          },
+          "children": []
+        },
+        "planning_time_ms": 0.024,
+        "execution_time_ms": 0.84,
+        "settings": {
+          "work_mem": "64kB"
+        },
+        "executed": true,
+        "engine": "postgres",
+        "fingerprint": "82acf94e49dc85e7"
+      }
+    },
+    "validated": false,
+    "captured_at": "2026-10-16T05:28:19.022826+00:00",
+    "checksum_method": "PostgreSQL row count plus SHA-256 of sorted SHA-256 row digests"
+  },
+  "lookup": {
+    "sql": "{\"aggregate\": \"customers\", \"pipeline\": [{\"$lookup\": {\"from\": \"orders\", \"localField\": \"_id\", \"foreignField\": \"customer_id\", \"as\": \"orders\"}}, {\"$project\": {\"_id\": 1, \"order_count\": {\"$size\": \"$orders\"}}}]}",
+    "raw_plan": {
+      "explainVersion": "1",
+      "stages": [
+        {
+          "$cursor": {
+            "queryPlanner": {
+              "namespace": "qd_showcase_5880f16c6a88.customers",
+              "indexFilterSet": false,
+              "parsedQuery": {},
+              "queryHash": "24761FAA",
+              "planCacheKey": "24761FAA",
+              "optimizationTimeMillis": 0,
+              "maxIndexedOrSolutionsReached": false,
+              "maxIndexedAndSolutionsReached": false,
+              "maxScansToExplodeReached": false,
+              "winningPlan": {
+                "stage": "PROJECTION_SIMPLE",
+                "transformBy": {
+                  "_id": 1
+                },
+                "inputStage": {
+                  "stage": "COLLSCAN",
+                  "direction": "forward"
+                }
+              },
+              "rejectedPlans": []
+            },
+            "executionStats": {
+              "executionSuccess": true,
+              "nReturned": 20,
+              "executionTimeMillis": 490,
+              "totalKeysExamined": 0,
+              "totalDocsExamined": 20,
+              "executionStages": {
+                "stage": "PROJECTION_SIMPLE",
+                "nReturned": 20,
+                "executionTimeMillisEstimate": 0,
+                "works": 21,
+                "advanced": 20,
+                "needTime": 0,
+                "needYield": 0,
+                "saveState": 1,
+                "restoreState": 1,
+                "isEOF": 1,
+                "transformBy": {
+                  "_id": 1
+                },
+                "inputStage": {
+                  "stage": "COLLSCAN",
+                  "nReturned": 20,
+                  "executionTimeMillisEstimate": 0,
+                  "works": 21,
+                  "advanced": 20,
+                  "needTime": 0,
+                  "needYield": 0,
+                  "saveState": 1,
+                  "restoreState": 1,
+                  "isEOF": 1,
+                  "direction": "forward",
+                  "docsExamined": 20
+                }
+              }
+            }
+          },
+          "nReturned": 20,
+          "executionTimeMillisEstimate": 0
+        },
+        {
+          "$lookup": {
+            "from": "orders",
+            "as": "orders",
+            "localField": "_id",
+            "foreignField": "customer_id"
+          },
+          "totalDocsExamined": 2000000,
+          "totalKeysExamined": 0,
+          "collectionScans": 20,
+          "indexesUsed": [],
+          "nReturned": 20,
+          "executionTimeMillisEstimate": 490
+        },
+        {
+          "$project": {
+            "_id": true,
+            "order_count": {
+              "$size": [
+                "$orders"
+              ]
+            }
+          },
+          "nReturned": 20,
+          "executionTimeMillisEstimate": 490
+        }
+      ],
+      "serverInfo": {
+        "host": "b24e238eef35",
+        "port": 27017,
+        "version": "7.0.43",
+        "gitVersion": "ef5a7d3480b59feae13d564376129fc4ceee6177"
+      },
+      "serverParameters": {
+        "internalQueryFacetBufferSizeBytes": 104857600,
+        "internalQueryFacetMaxOutputDocSizeBytes": 104857600,
+        "internalLookupStageIntermediateDocumentMaxSizeBytes": 104857600,
+        "internalDocumentSourceGroupMaxMemoryBytes": 104857600,
+        "internalQueryMaxBlockingSortMemoryUsageBytes": 104857600,
+        "internalQueryProhibitBlockingMergeOnMongoS": 0,
+        "internalQueryMaxAddToSetBytes": 104857600,
+        "internalDocumentSourceSetWindowFieldsMaxMemoryBytes": 104857600,
+        "internalQueryFrameworkControl": "forceClassicEngine"
+      },
+      "command": {
+        "aggregate": "customers",
+        "pipeline": [
+          {
+            "$lookup": {
+              "from": "orders",
+              "localField": "_id",
+              "foreignField": "customer_id",
+              "as": "orders"
+            }
+          },
+          {
+            "$project": {
+              "_id": 1,
+              "order_count": {
+                "$size": "$orders"
+              }
+            }
+          }
+        ],
+        "cursor": {},
+        "maxTimeMS": 10000,
+        "$db": "qd_showcase_5880f16c6a88"
+      },
+      "ok": 1.0
+    },
+    "plan": {
+      "root": {
+        "node_id": "0",
+        "parent_id": null,
+        "node_type": "$project",
+        "relation_name": null,
+        "index_name": null,
+        "estimated_rows": 0.0,
+        "actual_rows": 20.0,
+        "estimated_cost": 0.0,
+        "actual_time_ms": 490.0,
+        "loops": 1,
+        "rows_removed_by_filter": null,
+        "shared_hit_blocks": null,
+        "shared_read_blocks": null,
+        "temp_read_blocks": null,
+        "temp_written_blocks": null,
+        "filter_condition": null,
+        "index_condition": null,
+        "join_condition": null,
+        "plan_width": null,
+        "sort_method": null,
+        "hash_batches": null,
+        "output": [],
+        "error_ratio": null,
+        "filter_waste": null,
+        "exclusive_time_ms": 0.0,
+        "total_time_ms": 490.0,
+        "exclusive_temp_written_blocks": null,
+        "exclusive_temp_read_blocks": null,
+        "docs_examined": null,
+        "keys_examined": null,
+        "io_pressure": "none",
+        "raw": {
+          "stage": "$project",
+          "args": {
+            "_id": true,
+            "order_count": {
+              "$size": [
+                "$orders"
+              ]
+            }
+          },
+          "nReturned": 20,
+          "executionTimeMillisEstimate": 490
+        },
+        "children": [
+          {
+            "node_id": "0.0",
+            "parent_id": "0",
+            "node_type": "$lookup",
+            "relation_name": null,
+            "index_name": null,
+            "estimated_rows": 0.0,
+            "actual_rows": 20.0,
+            "estimated_cost": 0.0,
+            "actual_time_ms": 490.0,
+            "loops": 1,
+            "rows_removed_by_filter": null,
+            "shared_hit_blocks": null,
+            "shared_read_blocks": null,
+            "temp_read_blocks": null,
+            "temp_written_blocks": null,
+            "filter_condition": null,
+            "index_condition": null,
+            "join_condition": null,
+            "plan_width": null,
+            "sort_method": null,
+            "hash_batches": null,
+            "output": [],
+            "error_ratio": null,
+            "filter_waste": null,
+            "exclusive_time_ms": 490.0,
+            "total_time_ms": 490.0,
+            "exclusive_temp_written_blocks": null,
+            "exclusive_temp_read_blocks": null,
+            "docs_examined": 2000000,
+            "keys_examined": 0,
+            "io_pressure": "none",
+            "raw": {
+              "stage": "$lookup",
+              "args": {
+                "from": "orders",
+                "as": "orders",
+                "localField": "_id",
+                "foreignField": "customer_id"
+              },
+              "totalDocsExamined": 2000000,
+              "totalKeysExamined": 0,
+              "collectionScans": 20,
+              "indexesUsed": [],
+              "nReturned": 20,
+              "executionTimeMillisEstimate": 490
+            },
+            "children": [
+              {
+                "node_id": "0.0.0",
+                "parent_id": "0.0",
+                "node_type": "$cursor",
+                "relation_name": null,
+                "index_name": null,
+                "estimated_rows": 0.0,
+                "actual_rows": 20.0,
+                "estimated_cost": 0.0,
+                "actual_time_ms": 0.0,
+                "loops": 1,
+                "rows_removed_by_filter": null,
+                "shared_hit_blocks": null,
+                "shared_read_blocks": null,
+                "temp_read_blocks": null,
+                "temp_written_blocks": null,
+                "filter_condition": null,
+                "index_condition": null,
+                "join_condition": null,
+                "plan_width": null,
+                "sort_method": null,
+                "hash_batches": null,
+                "output": [],
+                "error_ratio": null,
+                "filter_waste": null,
+                "exclusive_time_ms": 0.0,
+                "total_time_ms": 0.0,
+                "exclusive_temp_written_blocks": null,
+                "exclusive_temp_read_blocks": null,
+                "docs_examined": null,
+                "keys_examined": null,
+                "io_pressure": "none",
+                "raw": {
+                  "stage": "$cursor",
+                  "nReturned": 20,
+                  "executionTimeMillisEstimate": 0
+                },
+                "children": [
+                  {
+                    "node_id": "0.0.0.0",
+                    "parent_id": "0.0.0",
+                    "node_type": "PROJECTION_SIMPLE",
+                    "relation_name": null,
+                    "index_name": null,
+                    "estimated_rows": 0.0,
+                    "actual_rows": 20.0,
+                    "estimated_cost": 0.0,
+                    "actual_time_ms": 0.0,
+                    "loops": 1,
+                    "rows_removed_by_filter": null,
+                    "shared_hit_blocks": null,
+                    "shared_read_blocks": null,
+                    "temp_read_blocks": null,
+                    "temp_written_blocks": null,
+                    "filter_condition": null,
+                    "index_condition": null,
+                    "join_condition": null,
+                    "plan_width": null,
+                    "sort_method": null,
+                    "hash_batches": null,
+                    "output": [],
+                    "error_ratio": null,
+                    "filter_waste": null,
+                    "exclusive_time_ms": 0.0,
+                    "total_time_ms": 0.0,
+                    "exclusive_temp_written_blocks": null,
+                    "exclusive_temp_read_blocks": null,
+                    "docs_examined": null,
+                    "keys_examined": null,
+                    "io_pressure": "none",
+                    "raw": {
+                      "stage": "PROJECTION_SIMPLE",
+                      "nReturned": 20,
+                      "executionTimeMillisEstimate": 0,
+                      "works": 21,
+                      "advanced": 20,
+                      "needTime": 0,
+                      "needYield": 0,
+                      "saveState": 1,
+                      "restoreState": 1,
+                      "isEOF": 1,
+                      "transformBy": {
+                        "_id": 1
+                      }
+                    },
+                    "children": [
+                      {
+                        "node_id": "0.0.0.0.0",
+                        "parent_id": "0.0.0.0",
+                        "node_type": "COLLSCAN",
+                        "relation_name": "customers",
+                        "index_name": null,
+                        "estimated_rows": 0.0,
+                        "actual_rows": 20.0,
+                        "estimated_cost": 0.0,
+                        "actual_time_ms": 0.0,
+                        "loops": 1,
+                        "rows_removed_by_filter": 0,
+                        "shared_hit_blocks": null,
+                        "shared_read_blocks": null,
+                        "temp_read_blocks": null,
+                        "temp_written_blocks": null,
+                        "filter_condition": null,
+                        "index_condition": null,
+                        "join_condition": null,
+                        "plan_width": null,
+                        "sort_method": null,
+                        "hash_batches": null,
+                        "output": [],
+                        "error_ratio": null,
+                        "filter_waste": 0.0,
+                        "exclusive_time_ms": 0.0,
+                        "total_time_ms": 0.0,
+                        "exclusive_temp_written_blocks": null,
+                        "exclusive_temp_read_blocks": null,
+                        "docs_examined": 20,
+                        "keys_examined": null,
+                        "io_pressure": "none",
+                        "raw": {
+                          "stage": "COLLSCAN",
+                          "nReturned": 20,
+                          "executionTimeMillisEstimate": 0,
+                          "works": 21,
+                          "advanced": 20,
+                          "needTime": 0,
+                          "needYield": 0,
+                          "saveState": 1,
+                          "restoreState": 1,
+                          "isEOF": 1,
+                          "direction": "forward",
+                          "docsExamined": 20
+                        },
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "planning_time_ms": null,
+      "execution_time_ms": 490.0,
+      "settings": {},
+      "executed": true,
+      "engine": "mongodb",
+      "fingerprint": "fa80c82c3c04b20f"
+    },
+    "findings": [
+      {
+        "id": 1,
+        "rule_id": "MONGO_LARGE_LOOKUP",
+        "severity": "critical",
+        "title": "$lookup without a supporting index",
+        "summary": "The join into orders on customer_id examined 2,000,000 documents in 20 collection scans.",
+        "evidence": {
+          "from": "orders",
+          "foreign_field": "customer_id",
+          "docs_examined": 2000000,
+          "collection_scans": 20,
+          "indexed": false
+        },
+        "node_ids": [
+          "0.0"
+        ],
+        "confidence": 0.95,
+        "next_actions": [
+          "Create an index on orders.customer_id",
+          "Filter the local collection before the $lookup so fewer rows are joined"
+        ]
+      }
+    ],
+    "comparison": null,
+    "benchmark": {
+      "before": {
+        "n": 7,
+        "median_ms": 487.0,
+        "p95_ms": 541.4,
+        "mean_ms": 493.7142857142857,
+        "stdev_ms": 31.658144216585015,
+        "cv": 0.06412239858683308,
+        "min_ms": 460.0,
+        "max_ms": 554.0
+      },
+      "after": {
+        "n": 7,
+        "median_ms": 3.0,
+        "p95_ms": 5.699999999999999,
+        "mean_ms": 3.5714285714285716,
+        "stdev_ms": 1.3972762620115438,
+        "cv": 0.39123735336323223,
+        "min_ms": 2.0,
+        "max_ms": 6.0
+      },
+      "before_samples": [
+        {
+          "execution_ms": 469.0,
+          "planning_ms": null,
+          "rows": 20,
+          "shared_hit_blocks": null,
+          "shared_read_blocks": null,
+          "temp_blocks": null
+        },
+        {
+          "execution_ms": 478.0,
+          "planning_ms": null,
+          "rows": 20,
+          "shared_hit_blocks": null,
+          "shared_read_blocks": null,
+          "temp_blocks": null
+        },
+        {
+          "execution_ms": 496.0,
+          "planning_ms": null,
+          "rows": 20,
+          "shared_hit_blocks": null,
+          "shared_read_blocks": null,
+          "temp_blocks": null
+        },
+        {
+          "execution_ms": 512.0,
+          "planning_ms": null,
+          "rows": 20,
+          "shared_hit_blocks": null,
+          "shared_read_blocks": null,
+          "temp_blocks": null
+        },
+        {
+          "execution_ms": 487.0,
+          "planning_ms": null,
+          "rows": 20,
+          "shared_hit_blocks": null,
+          "shared_read_blocks": null,
+          "temp_blocks": null
+        },
+        {
+          "execution_ms": 554.0,
+          "planning_ms": null,
+          "rows": 20,
+          "shared_hit_blocks": null,
+          "shared_read_blocks": null,
+          "temp_blocks": null
+        },
+        {
+          "execution_ms": 460.0,
+          "planning_ms": null,
+          "rows": 20,
+          "shared_hit_blocks": null,
+          "shared_read_blocks": null,
+          "temp_blocks": null
+        }
+      ],
+      "after_samples": [
+        {
+          "execution_ms": 3.0,
+          "planning_ms": null,
+          "rows": 20,
+          "shared_hit_blocks": null,
+          "shared_read_blocks": null,
+          "temp_blocks": null
+        },
+        {
+          "execution_ms": 3.0,
+          "planning_ms": null,
+          "rows": 20,
+          "shared_hit_blocks": null,
+          "shared_read_blocks": null,
+          "temp_blocks": null
+        },
+        {
+          "execution_ms": 2.0,
+          "planning_ms": null,
+          "rows": 20,
+          "shared_hit_blocks": null,
+          "shared_read_blocks": null,
+          "temp_blocks": null
+        },
+        {
+          "execution_ms": 3.0,
+          "planning_ms": null,
+          "rows": 20,
+          "shared_hit_blocks": null,
+          "shared_read_blocks": null,
+          "temp_blocks": null
+        },
+        {
+          "execution_ms": 3.0,
+          "planning_ms": null,
+          "rows": 20,
+          "shared_hit_blocks": null,
+          "shared_read_blocks": null,
+          "temp_blocks": null
+        },
+        {
+          "execution_ms": 5.0,
+          "planning_ms": null,
+          "rows": 20,
+          "shared_hit_blocks": null,
+          "shared_read_blocks": null,
+          "temp_blocks": null
+        },
+        {
+          "execution_ms": 6.0,
+          "planning_ms": null,
+          "rows": 20,
+          "shared_hit_blocks": null,
+          "shared_read_blocks": null,
+          "temp_blocks": null
+        }
+      ],
+      "improvement_pct": 99.38398357289527,
+      "index_size_bytes": 569344,
+      "index_build_ms": 105.3340999987995,
+      "plan_fingerprint_before": "fa80c82c3c04b20f",
+      "plan_fingerprint_after": "fa80c82c3c04b20f",
+      "checksum_match": true,
+      "index_used": true,
+      "warnings": [
+        "High variance in the after timings (CV 39%, runs from 2.0 to 6.0 ms): treat the median with caution and rerun on a quieter machine."
+      ],
+      "pg_version": "MongoDB 7.0.43",
+      "settings": {
+        "engine": "mongodb",
+        "checksum_algorithm": "sha256",
+        "checksum_before": "20:93ce367db7cecbb37dd7f3d4d2ed92790abc763770cbf1e3580a2038e09543a8",
+        "checksum_after": "20:93ce367db7cecbb37dd7f3d4d2ed92790abc763770cbf1e3580a2038e09543a8"
+      },
+      "dataset_snapshot": "e0abc356355d",
+      "ddl": "db.orders.createIndex({\"customer_id\":1})",
+      "plan_after": {
+        "root": {
+          "node_id": "0",
+          "parent_id": null,
+          "node_type": "$project",
+          "relation_name": null,
+          "index_name": null,
+          "estimated_rows": 0.0,
+          "actual_rows": 20.0,
+          "estimated_cost": 0.0,
+          "actual_time_ms": 7.0,
+          "loops": 1,
+          "rows_removed_by_filter": null,
+          "shared_hit_blocks": null,
+          "shared_read_blocks": null,
+          "temp_read_blocks": null,
+          "temp_written_blocks": null,
+          "filter_condition": null,
+          "index_condition": null,
+          "join_condition": null,
+          "plan_width": null,
+          "sort_method": null,
+          "hash_batches": null,
+          "output": [],
+          "error_ratio": null,
+          "filter_waste": null,
+          "exclusive_time_ms": 0.0,
+          "total_time_ms": 7.0,
+          "exclusive_temp_written_blocks": null,
+          "exclusive_temp_read_blocks": null,
+          "docs_examined": null,
+          "keys_examined": null,
+          "io_pressure": "none",
+          "raw": {
+            "stage": "$project",
+            "args": {
+              "_id": true,
+              "order_count": {
+                "$size": [
+                  "$orders"
+                ]
+              }
+            },
+            "nReturned": 20,
+            "executionTimeMillisEstimate": 7
+          },
+          "children": [
+            {
+              "node_id": "0.0",
+              "parent_id": "0",
+              "node_type": "$lookup",
+              "relation_name": null,
+              "index_name": null,
+              "estimated_rows": 0.0,
+              "actual_rows": 20.0,
+              "estimated_cost": 0.0,
+              "actual_time_ms": 7.0,
+              "loops": 1,
+              "rows_removed_by_filter": null,
+              "shared_hit_blocks": null,
+              "shared_read_blocks": null,
+              "temp_read_blocks": null,
+              "temp_written_blocks": null,
+              "filter_condition": null,
+              "index_condition": null,
+              "join_condition": null,
+              "plan_width": null,
+              "sort_method": null,
+              "hash_batches": null,
+              "output": [],
+              "error_ratio": null,
+              "filter_waste": null,
+              "exclusive_time_ms": 7.0,
+              "total_time_ms": 7.0,
+              "exclusive_temp_written_blocks": null,
+              "exclusive_temp_read_blocks": null,
+              "docs_examined": 2000,
+              "keys_examined": 2000,
+              "io_pressure": "none",
+              "raw": {
+                "stage": "$lookup",
+                "args": {
+                  "from": "orders",
+                  "as": "orders",
+                  "localField": "_id",
+                  "foreignField": "customer_id"
+                },
+                "totalDocsExamined": 2000,
+                "totalKeysExamined": 2000,
+                "collectionScans": 0,
+                "indexesUsed": [
+                  "customer_id_1"
+                ],
+                "nReturned": 20,
+                "executionTimeMillisEstimate": 7
+              },
+              "children": [
+                {
+                  "node_id": "0.0.0",
+                  "parent_id": "0.0",
+                  "node_type": "$cursor",
+                  "relation_name": null,
+                  "index_name": null,
+                  "estimated_rows": 0.0,
+                  "actual_rows": 20.0,
+                  "estimated_cost": 0.0,
+                  "actual_time_ms": 0.0,
+                  "loops": 1,
+                  "rows_removed_by_filter": null,
+                  "shared_hit_blocks": null,
+                  "shared_read_blocks": null,
+                  "temp_read_blocks": null,
+                  "temp_written_blocks": null,
+                  "filter_condition": null,
+                  "index_condition": null,
+                  "join_condition": null,
+                  "plan_width": null,
+                  "sort_method": null,
+                  "hash_batches": null,
+                  "output": [],
+                  "error_ratio": null,
+                  "filter_waste": null,
+                  "exclusive_time_ms": 0.0,
+                  "total_time_ms": 0.0,
+                  "exclusive_temp_written_blocks": null,
+                  "exclusive_temp_read_blocks": null,
+                  "docs_examined": null,
+                  "keys_examined": null,
+                  "io_pressure": "none",
+                  "raw": {
+                    "stage": "$cursor",
+                    "nReturned": 20,
+                    "executionTimeMillisEstimate": 0
+                  },
+                  "children": [
+                    {
+                      "node_id": "0.0.0.0",
+                      "parent_id": "0.0.0",
+                      "node_type": "PROJECTION_SIMPLE",
+                      "relation_name": null,
+                      "index_name": null,
+                      "estimated_rows": 0.0,
+                      "actual_rows": 20.0,
+                      "estimated_cost": 0.0,
+                      "actual_time_ms": 0.0,
+                      "loops": 1,
+                      "rows_removed_by_filter": null,
+                      "shared_hit_blocks": null,
+                      "shared_read_blocks": null,
+                      "temp_read_blocks": null,
+                      "temp_written_blocks": null,
+                      "filter_condition": null,
+                      "index_condition": null,
+                      "join_condition": null,
+                      "plan_width": null,
+                      "sort_method": null,
+                      "hash_batches": null,
+                      "output": [],
+                      "error_ratio": null,
+                      "filter_waste": null,
+                      "exclusive_time_ms": 0.0,
+                      "total_time_ms": 0.0,
+                      "exclusive_temp_written_blocks": null,
+                      "exclusive_temp_read_blocks": null,
+                      "docs_examined": null,
+                      "keys_examined": null,
+                      "io_pressure": "none",
+                      "raw": {
+                        "stage": "PROJECTION_SIMPLE",
+                        "nReturned": 20,
+                        "executionTimeMillisEstimate": 0,
+                        "works": 21,
+                        "advanced": 20,
+                        "needTime": 0,
+                        "needYield": 0,
+                        "saveState": 1,
+                        "restoreState": 1,
+                        "isEOF": 1,
+                        "transformBy": {
+                          "_id": 1
+                        }
+                      },
+                      "children": [
+                        {
+                          "node_id": "0.0.0.0.0",
+                          "parent_id": "0.0.0.0",
+                          "node_type": "COLLSCAN",
+                          "relation_name": "customers",
+                          "index_name": null,
+                          "estimated_rows": 0.0,
+                          "actual_rows": 20.0,
+                          "estimated_cost": 0.0,
+                          "actual_time_ms": 0.0,
+                          "loops": 1,
+                          "rows_removed_by_filter": 0,
+                          "shared_hit_blocks": null,
+                          "shared_read_blocks": null,
+                          "temp_read_blocks": null,
+                          "temp_written_blocks": null,
+                          "filter_condition": null,
+                          "index_condition": null,
+                          "join_condition": null,
+                          "plan_width": null,
+                          "sort_method": null,
+                          "hash_batches": null,
+                          "output": [],
+                          "error_ratio": null,
+                          "filter_waste": 0.0,
+                          "exclusive_time_ms": 0.0,
+                          "total_time_ms": 0.0,
+                          "exclusive_temp_written_blocks": null,
+                          "exclusive_temp_read_blocks": null,
+                          "docs_examined": 20,
+                          "keys_examined": null,
+                          "io_pressure": "none",
+                          "raw": {
+                            "stage": "COLLSCAN",
+                            "nReturned": 20,
+                            "executionTimeMillisEstimate": 0,
+                            "works": 21,
+                            "advanced": 20,
+                            "needTime": 0,
+                            "needYield": 0,
+                            "saveState": 1,
+                            "restoreState": 1,
+                            "isEOF": 1,
+                            "direction": "forward",
+                            "docsExamined": 20
+                          },
+                          "children": []
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "planning_time_ms": null,
+        "execution_time_ms": 6.0,
+        "settings": {},
+        "executed": true,
+        "engine": "mongodb",
+        "fingerprint": "fa80c82c3c04b20f"
+      }
+    },
+    "validated": true,
+    "captured_at": "2026-10-16T05:28:25.953919+00:00",
+    "checksum_method": "MongoDB document count plus SHA-256 of sorted server-side SHA-256 document digests",
+    "seed_description": "20 customers; 100000 orders; customer_id = order id modulo 1000"
+  }
+}

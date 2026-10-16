@@ -1,0 +1,1 @@
+[{"id":"recent-orders","file":"fixtures/ci/workload.json","sql":"SELECT id, created_at FROM orders WHERE customer_id = $1 ORDER BY created_at, id","params":[42]}]

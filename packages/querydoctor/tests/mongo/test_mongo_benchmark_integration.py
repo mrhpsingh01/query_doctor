@@ -97,9 +97,10 @@ def test_a_find_and_an_aggregate_checksum_the_same_documents_in_any_order(client
     agg = validate_mongo('{"aggregate": "customers", "pipeline": [{"$match": {"_id": {"$lte": 40}}}]}', [])
     assert result_checksum(db, agg) == result_checksum(db, q)
     empty = validate_mongo('{"find": "customers", "filter": {"_id": -1}}', [])
-    assert result_checksum(db, empty) == "0:0"
+    assert result_checksum(db, empty) == "0:" + __import__("hashlib").sha256(b"").hexdigest()
     collection, pipeline = checksum_pipeline(q)
-    assert collection == "customers" and "$toHashedIndexKey" in str(pipeline[-1])
+    assert collection == "customers" and "$function" in str(pipeline[-2])
+    assert pipeline[-1] == {"$sort": {"qd_digest": 1}}
 
 
 def test_a_lookup_pipeline_is_benchmarked_with_an_index_on_the_target_collection(client):

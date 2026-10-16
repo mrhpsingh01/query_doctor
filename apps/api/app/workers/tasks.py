@@ -11,7 +11,7 @@ from querydoctor.ranking.predictor import Predictor
 from app.config import get_settings
 from app.database import make_engine, make_sessionmaker
 from app.services.benchmarks import BenchmarkDeps, run_benchmark_job
-from app.services.connections import dsn_builder
+from app.services.connections import dsn_builder, mongo_builder
 from app.services.events import get_event_bus
 from app.services.explanations import ExplainDeps, run_explanation_job
 from app.services.pipeline import PipelineDeps, run_analysis_pipeline
@@ -35,6 +35,7 @@ def _runtime():
         thresholds=settings.diagnosis_thresholds(),
         predictor=Predictor.load(settings.model_dir),
         connection_dsn=dsn_builder(settings),
+        connection_mongo=mongo_builder(settings),
         mongo_target_uri=settings.mongo_target_uri,
     )
     return sessionmaker, deps
@@ -45,6 +46,22 @@ def run_analysis(analysis_id: int) -> None:
     sessionmaker, deps = _runtime()
     with sessionmaker() as session:
         run_analysis_pipeline(session, analysis_id, deps)
+
+
+@celery_app.task(name="qd.run_workload_batch")
+def run_workload_batch(analysis_ids: list[int]) -> None:
+    # Dispatch bounded items; never spend a single Celery deadline on all N queries.
+    for analysis_id in analysis_ids:
+        run_workload_item.delay(analysis_id)
+
+
+@celery_app.task(name="qd.run_workload_item")
+def run_workload_item(analysis_id: int) -> None:
+    from app.services.fix_queue import execute_batch
+    sessionmaker, pipeline_deps = _runtime()
+    _, benchmark_deps = _benchmark_runtime()
+    with sessionmaker() as session:
+        execute_batch(session, [analysis_id], pipeline_deps, benchmark_deps, enqueue_benchmark=run_benchmark.delay)
 
 
 @lru_cache
@@ -102,7 +119,7 @@ def _live_task_ids() -> tuple[set[int], set[int]] | None:
             found = {int(n) for n in re.findall(r"\d+", str(task.get("args", "")))}
             if task.get("name") == "qd.run_benchmark":
                 benchmarks |= found
-            elif task.get("name") == "qd.run_analysis":
+            elif task.get("name") in ("qd.run_analysis", "qd.run_workload_item"):
                 analyses |= found
     return benchmarks, analyses
 

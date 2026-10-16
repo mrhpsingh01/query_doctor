@@ -53,11 +53,25 @@ describe("ConnectionsPanel", () => {
     await fill(user);
     await user.click(screen.getByRole("button", { name: /add connection/i }));
     expect(mocks.createConnection).toHaveBeenCalledWith(1, {
-      name: "Prod replica", host: "db.example.com", port: 5432, database: "shop", username: "reader", password: "Sup3r-S3cret-pw", sslmode: "prefer",
+      name: "Prod replica", engine: "postgres", host: "db.example.com", port: 5432, database: "shop", username: "reader", password: "Sup3r-S3cret-pw", sslmode: "prefer", tls: true, auth_database: null,
     });
     expect(await screen.findByText("Prod replica")).toBeInTheDocument();
     expect(screen.getByLabelText(/^password$/i)).toHaveValue("");
     expect(document.body.textContent).not.toContain("Sup3r-S3cret-pw");
+  });
+
+  it("registers a MongoDB source with its own port and authentication database", async () => {
+    const user = userEvent.setup();
+    mocks.listConnections.mockResolvedValue([]);
+    mocks.createConnection.mockResolvedValue(conn({ engine: "mongodb", port: 27017, tls: true, auth_database: "admin" }));
+    render(<ConnectionsPanel projectId={1} />);
+    await user.selectOptions(await screen.findByLabelText(/^engine$/i), "mongodb");
+    await fill(user);
+    await user.type(screen.getByLabelText(/authentication database/i), "admin");
+    await user.click(screen.getByRole("button", { name: /add connection/i }));
+    expect(mocks.createConnection).toHaveBeenCalledWith(1, expect.objectContaining({
+      engine: "mongodb", port: 27017, tls: true, auth_database: "admin",
+    }));
   });
 
   it("shows the server's reason when a host is refused and keeps the form usable", async () => {

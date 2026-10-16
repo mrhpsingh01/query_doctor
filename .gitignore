@@ -11,3 +11,5 @@ playwright-report/
 test-results/
 dist/
 datasets/generation*.log
+
+.test-artifacts/

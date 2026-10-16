@@ -15,8 +15,9 @@ from app.config import Settings, get_settings
 from app.database import make_engine, make_sessionmaker
 from app.logging_utils import install_redaction
 from app.models import Base, Project
+from app.security.auth import member, path_project, resource_path, subject_for, validate_tokens
 from app.services.events import EventBus, get_event_bus
-from app.services.connections import dsn_builder
+from app.services.connections import dsn_builder, mongo_builder, source_dsn, source_mongo
 from app.services.explanations import ExplainDeps, run_explanation_job
 from app.services.benchmarks import BenchmarkDeps, run_benchmark_job
 from app.services.pipeline import PipelineDeps, run_analysis_pipeline
@@ -27,9 +28,12 @@ SAMPLE_PROJECT_NAME = "Sample shop"
 
 def ensure_sample_project(sessionmaker) -> None:
     with sessionmaker() as session:
-        if session.scalar(select(Project).where(Project.name == SAMPLE_PROJECT_NAME)) is None:
-            session.add(Project(name=SAMPLE_PROJECT_NAME, description="QueryDoctor's prepared e-commerce database"))
-            session.commit()
+        project = session.scalar(select(Project).where(Project.name == SAMPLE_PROJECT_NAME))
+        if project is None:
+            project = Project(name=SAMPLE_PROJECT_NAME, description="QueryDoctor's prepared e-commerce database")
+            session.add(project)
+            session.flush()
+        session.commit()
 
 
 def create_app(
@@ -48,6 +52,10 @@ def create_app(
     """Build the API. ``event_bus`` / ``pipeline_deps`` / ``enqueue`` exist so tests can run everything in-process;
     in deployment the defaults hand analyses to the Celery worker over Redis."""
     settings = settings or get_settings()
+    validate_tokens(settings.auth_tokens)
+    if settings.allow_custom_connections and not settings.auto_create_tables:
+        if not settings.auth_tokens or not settings.secret_key:
+            raise ValueError("Customer connections require QD_AUTH_TOKENS and QD_SECRET_KEY")
     install_redaction()  # no query literal or parameter value reaches any log line
     bus = event_bus or get_event_bus(settings.redis_url)
     deps = pipeline_deps or PipelineDeps(
@@ -97,6 +105,24 @@ def create_app(
     app = FastAPI(title="QueryDoctor API", version="0.1.0", lifespan=lifespan)
     app.state.settings = settings
 
+    @app.middleware("http")
+    async def customer_access(request, call_next):
+        tokens = settings.auth_tokens
+        if tokens and request.url.path.startswith("/api/") and request.url.path != "/api/health":
+            subject = subject_for(request, tokens)
+            if subject is None:
+                return JSONResponse(status_code=401, content={"detail": "authentication required"})
+            request.state.subject = subject
+            path = request.url.path
+            if resource_path(path):
+                with app.state.sessionmaker() as session:
+                    project_id = path_project(session, path)
+                    if project_id is None or not member(session, project_id, subject):
+                        return JSONResponse(status_code=404, content={"detail": "not found"})
+            if path == "/api/model/monitor":
+                return JSONResponse(status_code=404, content={"detail": "not found"})
+        return await call_next(request)
+
     @app.exception_handler(RequestValidationError)
     async def validation_error(_request, exc: RequestValidationError):
         # FastAPI's default body echoes the submitted value of each failing field (and, for a missing field, the whole
@@ -131,6 +157,12 @@ def create_app(
     app_state_resolver = resolver
     if deps.connection_dsn is None:
         deps.connection_dsn = dsn_builder(settings, resolver)
+    if deps.connection_mongo is None:
+        deps.connection_mongo = mongo_builder(settings, resolver)
+    if wl_deps.connection_dsn is None:
+        wl_deps.connection_dsn = lambda session, row: source_dsn(settings, resolver, session, row)
+    if wl_deps.connection_mongo is None:
+        wl_deps.connection_mongo = lambda session, row: source_mongo(settings, resolver, session, row)
 
     ex_deps = explain_deps or ExplainDeps(
         ollama=OllamaExplainer(settings.ollama_url, settings.ollama_model, settings.ollama_timeout_s) if settings.ollama_model else None

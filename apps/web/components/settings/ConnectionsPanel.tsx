@@ -6,7 +6,7 @@ import type { DbConnection } from "@/lib/types";
 
 const FIELD = "block w-full rounded-md border border-line bg-surface px-3 py-2 text-sm";
 const BUTTON = "rounded-md border px-3 py-1.5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60";
-const EMPTY = { name: "", host: "", port: "5432", database: "", username: "", password: "", sslmode: "prefer" as "prefer" | "require" };
+const EMPTY = { name: "", engine: "postgres" as "postgres" | "mongodb", host: "", port: "5432", database: "", username: "", password: "", sslmode: "prefer" as "prefer" | "require", tls: true, auth_database: "" };
 
 /** Register databases to analyse. Off unless the server operator enables it; passwords are sent once and never shown again. */
 export function ConnectionsPanel({ projectId }: { projectId: number }) {
@@ -37,7 +37,7 @@ export function ConnectionsPanel({ projectId }: { projectId: number }) {
   }
   if (connections === null && !error) return <p className="text-sm text-ink-2">Loading…</p>;
 
-  const set = (key: keyof typeof EMPTY) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setForm({ ...form, [key]: e.target.value });
+  const set = (key: Exclude<keyof typeof EMPTY, "engine" | "tls">) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setForm({ ...form, [key]: e.target.value });
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -50,8 +50,8 @@ export function ConnectionsPanel({ projectId }: { projectId: number }) {
     setError(null);
     try {
       const created = await api.createConnection(projectId, {
-        name: form.name, host: form.host, port: Number(form.port), database: form.database, username: form.username,
-        password: form.password, sslmode: form.sslmode,
+        name: form.name, engine: form.engine, host: form.host, port: Number(form.port), database: form.database, username: form.username,
+        password: form.password, sslmode: form.sslmode, tls: form.tls, auth_database: form.engine === "mongodb" ? (form.auth_database || null) : null,
       });
       setConnections((prev) => [...(prev ?? []), created]);
       setForm(EMPTY); // the password leaves the page as soon as it has been sent
@@ -87,7 +87,7 @@ export function ConnectionsPanel({ projectId }: { projectId: number }) {
               <span>
                 <span className="font-medium">{c.name}</span>{" "}
                 <span className="text-ink-2">
-                  {c.username}@{c.host}:{c.port}/{c.database} · ssl {c.sslmode}
+                  {c.username}@{c.host}:{c.port}/{c.database} · {c.engine === "mongodb" ? `MongoDB · TLS ${c.tls ? "on" : "off"}` : `PostgreSQL · SSL ${c.sslmode}`}
                 </span>
               </span>
               {deleting === c.id ? (
@@ -111,9 +111,16 @@ export function ConnectionsPanel({ projectId }: { projectId: number }) {
       )}
       <form onSubmit={submit} aria-label="Add a connection" className="grid max-w-xl gap-3">
         <p className="text-sm text-ink-2">
-          QueryDoctor connects read-only with a short time limit and refuses internal addresses. The password is encrypted and never shown again.
+          Use a read-only database credential. QueryDoctor limits analysis time and refuses blocked addresses. The password is encrypted and never shown again.
         </p>
         <div className="grid gap-3 sm:grid-cols-2">
+          <label className="grid gap-1 text-sm">
+            Engine
+            <select className={FIELD} value={form.engine} onChange={(e) => setForm({ ...form, engine: e.target.value as "postgres" | "mongodb", port: e.target.value === "mongodb" ? "27017" : "5432" })}>
+              <option value="postgres">PostgreSQL</option>
+              <option value="mongodb">MongoDB</option>
+            </select>
+          </label>
           <label className="grid gap-1 text-sm">
             Name
             <input className={FIELD} value={form.name} onChange={set("name")} autoComplete="off" />
@@ -138,13 +145,26 @@ export function ConnectionsPanel({ projectId }: { projectId: number }) {
             Password
             <input className={FIELD} type="password" value={form.password} onChange={set("password")} autoComplete="new-password" />
           </label>
-          <label className="grid gap-1 text-sm">
-            SSL
-            <select className={FIELD} value={form.sslmode} onChange={set("sslmode")}>
-              <option value="prefer">Prefer</option>
-              <option value="require">Require</option>
-            </select>
-          </label>
+          {form.engine === "postgres" ? (
+            <label className="grid gap-1 text-sm">
+              SSL
+              <select className={FIELD} value={form.sslmode} onChange={set("sslmode")}>
+                <option value="prefer">Prefer</option>
+                <option value="require">Require</option>
+              </select>
+            </label>
+          ) : (
+            <>
+              <label className="grid gap-1 text-sm">
+                Authentication database
+                <input className={FIELD} value={form.auth_database} onChange={set("auth_database")} placeholder="Defaults to database" autoComplete="off" />
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={form.tls} onChange={(e) => setForm({ ...form, tls: e.target.checked })} />
+                Use TLS (certificate must cover the checked IP)
+              </label>
+            </>
+          )}
         </div>
         <div>
           <button type="submit" disabled={busy} className={`${BUTTON} border-accent bg-accent text-accent-ink`}>

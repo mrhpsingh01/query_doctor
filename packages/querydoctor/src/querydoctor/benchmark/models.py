@@ -51,3 +51,4 @@ class BenchmarkResult(BaseModel):
     settings: dict[str, Any]
     dataset_snapshot: str
     ddl: str
+    plan_after: dict[str, Any] | None = None  # normalized measured plan, when captured

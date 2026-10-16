@@ -3,8 +3,8 @@
     sandbox copy -> warm up + measure the original query -> create the REAL index -> warm up + measure again
                  -> compare medians, variance and result checksums -> drop the sandbox (always)
 
-Timings are the server-reported ``executionTimeMillis`` of ``explain("executionStats")``. The result checksum is computed in
-the database (a document count and a sum of hashed documents), so no document ever leaves it and row order is irrelevant.
+Timings are the server-reported ``executionTimeMillis`` of ``explain("executionStats")``. The result checksum uses server-side SHA-256 per document, then a count and SHA-256
+of the sorted digests. Only hashes leave the database; duplicate documents remain significant.
 """
 
 from __future__ import annotations
@@ -26,6 +26,7 @@ from querydoctor.benchmark.stats import improvement_pct, summarize
 from querydoctor.candidates.models import IndexCandidate
 from querydoctor.db.errors import DbError
 from querydoctor.mongo.candidates import build_create_index
+from querydoctor.mongo.checksum import checksum_pipeline, result_checksum
 from querydoctor.mongo.explain import explain_query
 from querydoctor.mongo.plan import normalize_plan
 from querydoctor.mongo.query import ValidatedMongoQuery
@@ -33,35 +34,6 @@ from querydoctor.mongo.sandbox import MongoSandbox, SandboxError, acquire_slot
 from querydoctor.plan_parser import iter_nodes
 
 log = logging.getLogger(__name__)
-HASH_MODULUS = 1_000_003
-
-
-def checksum_pipeline(vq: ValidatedMongoQuery) -> tuple[str, list[dict[str, Any]]]:
-    """(collection, pipeline) computing ``{n, h}``: the number of result documents and an order-insensitive hash of them."""
-    q = vq.query
-    if q.kind == "find":
-        stages: list[dict[str, Any]] = [{"$match": q.filter}]
-        if q.sort:
-            stages.append({"$sort": q.sort})
-        if q.skip:
-            stages.append({"$skip": q.skip})
-        if q.limit:
-            stages.append({"$limit": q.limit})
-        if q.projection:
-            stages.append({"$project": q.projection})
-    else:
-        stages = list(q.pipeline or [])
-    stages.append({"$group": {"_id": None, "n": {"$sum": 1}, "h": {"$sum": {"$mod": [{"$toHashedIndexKey": "$$ROOT"}, HASH_MODULUS]}}}})
-    return q.collection, stages
-
-
-def result_checksum(db, vq: ValidatedMongoQuery) -> str:
-    collection, pipeline = checksum_pipeline(vq)
-    rows = list(db[collection].aggregate(pipeline, maxTimeMS=60_000, allowDiskUse=True))
-    n, h = (rows[0]["n"], rows[0]["h"]) if rows else (0, 0)
-    return f"{n}:{h}"
-
-
 def _sample(plan) -> RunSample:
     rows = plan.root.actual_rows
     return RunSample(execution_ms=float(plan.execution_time_ms or 0.0), rows=int(rows) if rows is not None else None)
@@ -120,7 +92,7 @@ def run_mongo_benchmark(
         snapshot = hashlib.sha1(f"{source_db}:{sorted(counts.items())}".encode()).hexdigest()[:12]
 
         before_samples, before_plan = _runs(db, vq, params, config.runs, config.warmups, check, on_progress, "warmup_before", "measuring_before")
-        check_before = result_checksum(db, vq)
+        check_before = result_checksum(db, vq, check)
 
         check()
         on_progress("creating_index")
@@ -132,7 +104,7 @@ def run_mongo_benchmark(
         check()
         on_progress("analyzing")  # MongoDB keeps its own statistics: nothing to refresh
         after_samples, after_plan = _runs(db, vq, params, config.runs, config.warmups, check, on_progress, "warmup_after", "measuring_after")
-        check_after = result_checksum(db, vq)
+        check_after = result_checksum(db, vq, check)
 
         on_progress("comparing")
         before = summarize([s.execution_ms for s in before_samples])
@@ -151,8 +123,8 @@ def run_mongo_benchmark(
             before=before, after=after, before_samples=before_samples, after_samples=after_samples,
             improvement_pct=improvement_pct(before.median_ms, after.median_ms), index_size_bytes=size, index_build_ms=build_ms,
             plan_fingerprint_before=before_plan.fingerprint, plan_fingerprint_after=after_plan.fingerprint, checksum_match=match,
-            index_used=index_used, warnings=warnings, pg_version=f"MongoDB {version}", settings={"engine": "mongodb"},
-            dataset_snapshot=snapshot, ddl=candidate.ddl,
+            index_used=index_used, warnings=warnings, pg_version=f"MongoDB {version}", settings={"engine": "mongodb", "checksum_algorithm": "sha256", "checksum_before": check_before, "checksum_after": check_after},
+            dataset_snapshot=snapshot, ddl=candidate.ddl, plan_after=after_plan.model_dump(mode="json"),
         )
     except (BenchmarkFailed, BenchmarkBusy):
         raise

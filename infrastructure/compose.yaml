@@ -160,6 +160,10 @@ services:
 
 volumes:
   mongo-data:
+    name: ${COMPOSE_PROJECT_NAME:-querydoctor}_mongo-data${QD_DATASET_SUFFIX:-}
   target-data:
+    name: ${COMPOSE_PROJECT_NAME:-querydoctor}_target-data${QD_DATASET_SUFFIX:-}
   bench-data:
+    name: ${COMPOSE_PROJECT_NAME:-querydoctor}_bench-data${QD_DATASET_SUFFIX:-}
   meta-data:
+    name: ${COMPOSE_PROJECT_NAME:-querydoctor}_meta-data${QD_DATASET_SUFFIX:-}

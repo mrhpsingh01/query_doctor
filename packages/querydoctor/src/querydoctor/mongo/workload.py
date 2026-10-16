@@ -45,6 +45,11 @@ def _spec(command: dict[str, Any]) -> dict[str, Any] | None:
 def read_profile(db: Database, limit: int = DEFAULT_LIMIT) -> tuple[list[WorkloadQuery], int]:
     """``(queries by total time, number of ignored profile entries)`` for the database's recent operations."""
     entries = db["system.profile"].find({"op": {"$in": ["query", "command"]}}).sort("ts", -1).limit(limit)
+    return parse_profile(entries)
+
+
+def parse_profile(entries) -> tuple[list[WorkloadQuery], int]:
+    """Group an explicitly captured profiler sample; never retains command literals."""
     groups: dict[str, dict[str, Any]] = {}
     times: dict[str, list[float]] = defaultdict(list)
     skipped = 0
@@ -58,15 +63,25 @@ def read_profile(db: Database, limit: int = DEFAULT_LIMIT) -> tuple[list[Workloa
         except (MongoValidationError, ValueError):
             skipped += 1
             continue
+        try:
+            millis = float(entry.get("millis", 0))
+            docs = int(entry.get("docsExamined", 0) or 0)
+            keys = int(entry.get("keysExamined", 0) or 0)
+            rows = int(entry.get("nreturned", 0) or 0)
+        except (TypeError, ValueError, OverflowError):
+            skipped += 1
+            continue
+        if not math.isfinite(millis) or millis < 0 or min(docs, keys, rows) < 0:
+            skipped += 1
+            continue
         group = groups.setdefault(
             vq.fingerprint,
             {"vq": vq, "docs": 0, "keys": 0, "rows": 0, "sample": parametrized_spec(vq.query)},  # never the logged values
         )
-        millis = float(entry.get("millis", 0))
         times[vq.fingerprint].append(millis)
-        group["docs"] += int(entry.get("docsExamined", 0) or 0)
-        group["keys"] += int(entry.get("keysExamined", 0) or 0)
-        group["rows"] += int(entry.get("nreturned", 0) or 0)
+        group["docs"] += docs
+        group["keys"] += keys
+        group["rows"] += rows
     out: list[WorkloadQuery] = []
     for fingerprint, g in groups.items():
         values = times[fingerprint]
@@ -77,7 +92,8 @@ def read_profile(db: Database, limit: int = DEFAULT_LIMIT) -> tuple[list[Workloa
             WorkloadQuery(
                 fingerprint=fingerprint, normalized_sql=g["vq"].shape, sample_sql=g["sample"], calls=calls, total_ms=total, mean_ms=mean,
                 stddev_ms=std, min_ms=min(values), max_ms=max(values), rows=g["rows"], shared_hit_blocks=g["keys"],
-                shared_read_blocks=g["docs"], temp_blocks=0, p95_est_ms=mean + Z95 * std, tables=g["vq"].collections,
+                shared_read_blocks=g["docs"], temp_blocks=0, p95_est_ms=mean + Z95 * std,
+                p95_observed_ms=sorted(values)[math.ceil(0.95 * calls) - 1], tables=g["vq"].collections,
             )
         )
     out.sort(key=lambda q: q.total_ms, reverse=True)

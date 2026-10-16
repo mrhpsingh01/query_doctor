@@ -1,0 +1,4 @@
+{
+  "sql_directories": ["fixtures/ci/baseline", "fixtures/ci/candidate"],
+  "workload": "fixtures/ci/workload.json"
+}

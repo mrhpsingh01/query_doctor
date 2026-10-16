@@ -1,9 +1,15 @@
 "use client";
 
+import { RecordedWorkload } from "@/components/workload/RecordedWorkload";
 import { WorkloadDashboard } from "@/components/workload/WorkloadDashboard";
+import { SHOWCASE_ONLY } from "@/lib/deployment";
 import { useDefaultProject } from "@/lib/useDefaultProject";
 
 export default function WorkloadPage() {
+  return SHOWCASE_ONLY ? <RecordedWorkload /> : <LiveWorkload />;
+}
+
+function LiveWorkload() {
   const { project, error } = useDefaultProject();
   if (error) {
     return (

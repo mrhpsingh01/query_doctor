@@ -6,6 +6,7 @@ from collections import defaultdict
 from collections.abc import Callable
 from contextlib import AbstractContextManager
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any
 
 import psycopg
@@ -41,6 +42,8 @@ class WorkloadDeps:
     mongo_connect: Callable[[str], AbstractContextManager] | None = None  # default: querydoctor.mongo.schema.mongo_connect
     mongo_reader: Callable[..., tuple[list, int]] | None = None  # (db, limit) -> (queries, skipped); default: the profiler
     mongo_demo_runner: Callable[[str], None] = lambda mode: None
+    connection_dsn: Callable | None = None  # (Connection) -> guarded PostgreSQL DSN
+    connection_mongo: Callable | None = None  # (Connection) -> guarded MongoDB context manager
 
 
 def _query(row: WorkloadQueryRow) -> WorkloadQuery:
@@ -49,6 +52,7 @@ def _query(row: WorkloadQueryRow) -> WorkloadQuery:
         total_ms=row.total_ms, mean_ms=row.mean_ms, stddev_ms=row.stddev_ms, min_ms=row.min_ms, max_ms=row.max_ms,
         rows=row.rows, shared_hit_blocks=row.shared_hit_blocks, shared_read_blocks=row.shared_read_blocks,
         temp_blocks=row.temp_blocks, p95_est_ms=row.p95_est_ms, tables=list(row.tables or []),
+        p95_observed_ms=row.p95_observed_ms,
     )
 
 
@@ -56,15 +60,47 @@ def snapshot_dict(s: WorkloadSnapshot) -> dict[str, Any]:
     return {
         "id": s.id, "project_id": s.project_id, "engine": s.engine, "source": s.source, "taken_at": s.taken_at.isoformat(),
         "query_count": s.query_count, "skipped_count": s.skipped_count,
+        "source_connection_id": s.source_connection_id, "capture_method": s.capture_method,
+        "capture_start": s.capture_start.isoformat() if s.capture_start else None,
+        "capture_end": s.capture_end.isoformat() if s.capture_end else None,
+        "coverage": s.coverage, "engine_version": s.engine_version,
+        "schema_fingerprint": s.schema_fingerprint, "index_fingerprint": s.index_fingerprint,
+        "warnings": list(s.warnings or []),
     }
 
 
-def import_snapshot(session: Session, conn, project_id: int, limit: int = 500, reader=None, engine: str = "postgres") -> WorkloadSnapshot:
+def import_snapshot(session: Session, conn, project_id: int, limit: int = 500, reader=None, engine: str = "postgres", source_connection_id: int | None = None) -> WorkloadSnapshot:
     if engine == "mongodb":
         queries, skipped = (reader or read_profile)(conn, MONGO_PROFILE_LIMIT)
     else:
         queries, skipped = merge_statements((reader or read_statements)(conn, limit))
-    snapshot = WorkloadSnapshot(project_id=project_id, engine=engine, source="profiler" if engine == "mongodb" else "pg_stat_statements", query_count=len(queries), skipped_count=skipped)
+    method = "recent_profiler" if engine == "mongodb" else "pg_stat_statements"
+    warnings = (["At most 5,000 recent profiler records; incomplete production history. Whole-millisecond timings."]
+                if engine == "mongodb" else ["Aggregate statistics; p95 is estimated from mean and standard deviation."])
+    capture_start = None
+    if engine == "postgres" and hasattr(conn, "execute") and reader is None:
+        try:
+            capture_start = conn.execute("SELECT stats_reset FROM pg_stat_statements_info").fetchone()[0]
+        except psycopg.Error:
+            conn.rollback()
+            warnings.append("Statistics reset time unavailable; daily savings cannot be estimated.")
+    return store_snapshot(session, project_id, queries, skipped, engine=engine, source_connection_id=source_connection_id,
+                          capture_method=method, capture_start=capture_start, capture_end=datetime.now(UTC), coverage="bounded_sample" if engine == "mongodb" else "unknown",
+                          warnings=warnings)
+
+
+def store_snapshot(session: Session, project_id: int, queries: list[WorkloadQuery], skipped: int, *, engine: str,
+                   source_connection_id: int | None = None, capture_method: str, capture_start: datetime | None = None,
+                   capture_end: datetime | None = None, coverage: str = "unknown", engine_version: str | None = None,
+                   schema_fingerprint: str | None = None, index_fingerprint: str | None = None,
+                   warnings: list[str] | None = None) -> WorkloadSnapshot:
+    snapshot = WorkloadSnapshot(
+        project_id=project_id, engine=engine, source="profiler" if engine == "mongodb" else "pg_stat_statements",
+        source_connection_id=source_connection_id, capture_method=capture_method,
+        capture_start=capture_start, capture_end=capture_end, coverage=coverage, engine_version=engine_version,
+        schema_fingerprint=schema_fingerprint, index_fingerprint=index_fingerprint, warnings=warnings or [],
+        query_count=len(queries), skipped_count=skipped,
+    )
     session.add(snapshot)
     session.flush()
     session.add_all(
@@ -88,20 +124,25 @@ def _load(session: Session, snapshot: WorkloadSnapshot) -> list[WorkloadQuery]:
     return [_query(r) for r in session.scalars(select(WorkloadQueryRow).where(WorkloadQueryRow.snapshot_id == snapshot.id))]
 
 
-def _validated_fingerprints(session: Session, project_id: int) -> set[str]:
+def _validated_fingerprints(session: Session, project_id: int, source_connection_id: int | None = None) -> set[str]:
     stmt = (
         select(Analysis).join(RecommendationCandidate, RecommendationCandidate.analysis_id == Analysis.id)
-        .where(Analysis.project_id == project_id, RecommendationCandidate.validation == "benchmark_validated")
+        .where(Analysis.project_id == project_id, Analysis.connection_id == source_connection_id,
+               RecommendationCandidate.validation == "benchmark_validated")
     )
     return {a.snapshot.fingerprint for a in session.scalars(stmt).unique()}
 
 
 def dashboard(
-    session: Session, project_id: int, snapshot_id: int | None = None, compare_id: int | None = None, engine: str = "postgres"
+    session: Session, project_id: int, snapshot_id: int | None = None, compare_id: int | None = None,
+    engine: str = "postgres", source_connection_id: int | None = None,
 ) -> dict[str, Any]:
     """The workload view of one snapshot (default: the latest) compared with another (default: the one before it).
     Snapshots of different engines never mix: each engine has its own history."""
     snapshots = _snapshots(session, project_id, engine)
+    if source_connection_id is not None:
+        selected = None if source_connection_id == 0 else source_connection_id
+        snapshots = [s for s in snapshots if s.source_connection_id == selected]
     if not snapshots and snapshot_id is None and compare_id is None:
         return {"snapshot": None, "compare_to": None, "queries": [], "panels": build_panels([], validated_fingerprints=set(), regressions=[]).model_dump(mode="json"), "regressions": []}
     by_id = {s.id: s for s in snapshots}
@@ -114,20 +155,24 @@ def dashboard(
         raise LookupError("no workload snapshot yet")
     if compare_id is not None:
         previous = by_id[compare_id]
+        if previous.source_connection_id != current.source_connection_id:
+            raise LookupError("comparison snapshot belongs to another source")
     else:
-        older = [s for s in snapshots if s.id < current.id]
+        older = [s for s in snapshots if s.id < current.id and s.source_connection_id == current.source_connection_id]
         previous = older[0] if older else None
 
     queries = _load(session, current)
     regressions = detect_regressions(_load(session, previous), queries) if previous else []
     ranked = rank(queries)
-    panels = build_panels(queries, validated_fingerprints=_validated_fingerprints(session, project_id), regressions=regressions)
+    panels = build_panels(queries, validated_fingerprints=_validated_fingerprints(session, project_id, current.source_connection_id), regressions=regressions)
+    from app.services.fix_queue import queue_for_snapshot
     return {
         "snapshot": snapshot_dict(current),
         "compare_to": snapshot_dict(previous) if previous else None,
         "queries": [q.model_dump(mode="json") for q in ranked[:RANKED_LIMIT]],
         "panels": panels.model_dump(mode="json"),
         "regressions": [r.model_dump(mode="json") for r in regressions],
+        "fix_queue": queue_for_snapshot(session, current, queries),
     }
 
 
@@ -207,7 +252,8 @@ def _catalog_sample(fingerprint: str, scale: str) -> dict[str, Any] | None:
     return None
 
 
-def query_detail(session: Session, project_id: int, fingerprint: str, scale: str = "small") -> dict[str, Any] | None:
+def query_detail(session: Session, project_id: int, fingerprint: str, scale: str = "small",
+                 source_connection_id: int | None = None) -> dict[str, Any] | None:
     rows = list(
         session.execute(
             select(WorkloadQueryRow, WorkloadSnapshot)
@@ -216,18 +262,25 @@ def query_detail(session: Session, project_id: int, fingerprint: str, scale: str
             .order_by(WorkloadSnapshot.id)
         )
     )
-    analyses = [a for a in _project_analyses(session, project_id) if a.snapshot.fingerprint == fingerprint]
+    if source_connection_id is not None:
+        selected = None if source_connection_id == 0 else source_connection_id
+        rows = [(r, s) for r, s in rows if s.source_connection_id == selected]
+    else:
+        selected = None
+    analyses = [a for a in _project_analyses(session, project_id)
+                if a.snapshot.fingerprint == fingerprint and (source_connection_id is None or a.connection_id == selected)]
     if not rows and not analyses:
         return None
     latest = rows[-1][0] if rows else None
     return {
         "fingerprint": fingerprint,
+        "source_connection_id": selected,
         "normalized_sql": latest.normalized_sql if latest else analyses[-1].snapshot.normalized_sql,
         "sample_sql": latest.sample_sql if latest else analyses[-1].snapshot.sql,
         "trend": [
             {
                 "snapshot_id": s.id, "taken_at": s.taken_at.isoformat(), "calls": r.calls, "total_ms": r.total_ms,
-                "mean_ms": r.mean_ms, "p95_est_ms": r.p95_est_ms,
+                "mean_ms": r.mean_ms, "p95_est_ms": r.p95_est_ms, "p95_observed_ms": r.p95_observed_ms,
             }
             for r, s in rows
         ],
@@ -239,7 +292,7 @@ def query_detail(session: Session, project_id: int, fingerprint: str, scale: str
             for a in analyses
         ],
         "plan_changes": [c.model_dump(mode="json") for c in plan_changes(_analysis_dicts(analyses))],
-        "sample": _catalog_sample(fingerprint, scale),
+        "sample": _catalog_sample(fingerprint, scale) if selected is None else None,
     }
 
 

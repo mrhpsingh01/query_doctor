@@ -25,9 +25,15 @@ def has_order_by(sql: str) -> bool:
 
 
 def result_checksum(conn: psycopg.Connection, sql: str, params: Sequence[Any], *, ordered: bool) -> str:
-    """md5 of every output row. ``ordered=False`` compares as a set (rows sorted before hashing)."""
-    aggregate = "string_agg(t::text, ',')" if ordered else "string_agg(t::text, ',' ORDER BY t::text)"
-    wrapped = f"SELECT md5(coalesce({aggregate}, '')) FROM ({sql}) AS t"
+    """Count plus SHA-256 of fixed-width row digests; duplicates remain significant."""
+    order = "" if ordered else " ORDER BY row_digest"
+    aggregate = f"string_agg(row_digest, ''{order})"
+    wrapped = (
+        "SELECT count(*)::text || ':' || encode(sha256(convert_to(coalesce("
+        f"{aggregate}, ''), 'UTF8')), 'hex') FROM ("
+        "SELECT encode(sha256(convert_to(t::text, 'UTF8')), 'hex') AS row_digest "
+        f"FROM ({sql}) AS t) AS digests"
+    )
     try:
         return execute_single(conn, wrapped, params).get_value(0, 0).decode()
     except psycopg.errors.QueryCanceled as exc:
