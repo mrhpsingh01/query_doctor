@@ -19,14 +19,14 @@ concurrency:
   cancel-in-progress: true
 jobs:
   regression:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
           fetch-depth: 0
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: Install QueryDoctor
@@ -52,7 +52,7 @@ jobs:
         run: |
           base_commit="${QD_BASE_COMMIT:-$(git rev-parse HEAD^)}"
           python scripts/ci_check.py --base-ref "$base_commit" --head-ref "$QD_HEAD_COMMIT" --config .querydoctor/ci.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: querydoctor-evidence
@@ -61,7 +61,7 @@ jobs:
             querydoctor-fix-*
       - name: Post or update PR report
         if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const fs = require('fs');

@@ -64,6 +64,10 @@ compares exact PR base/head Git revisions using [.querydoctor/ci.json](.querydoc
 migration exporters, and refuses a pass for changed database files outside configured coverage. The checked-in profile
 covers the sample schema; [configure an application profile](docs/ci-regression-gate.md) for another schema/workload.
 
+[See the bot catch a deliberate index-drop regression on a real PR](https://github.com/mrhpsingh01/query_doctor/pull/1#issuecomment-6210487368)
+(0.094 ms → 9.502 ms, identical output, measured index fix). This draft demonstrates a correctly failing gate and must not be merged.
+The [implementation audit](docs/implementation-audit.md) records test evidence and application-specific configuration limits.
+
 **Planner vs. ML ranking:** on the repository's held-out query shapes, the planner heuristic ties the learned models
 at NDCG@3 ≈ 0.986. The best learned gain is +0.001 (90% interval −0.002 to +0.004), insufficient to replace the planner.
 This is evidence of no demonstrated ML advantage on this dataset, not a universal claim that PostgreSQL always wins.

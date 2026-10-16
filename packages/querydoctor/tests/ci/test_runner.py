@@ -24,12 +24,12 @@ def test_high_variance_only_vetoes_overlapping_distributions_not_clearly_separat
     assert classify(noisy_slow, summarize([2.2, 2.4, 3.6, 2.0, 4.0, 2.6, 2.4]), True) == 'INSUFFICIENT_EVIDENCE'
 
 
-def test_an_unseparated_change_below_the_noise_floor_is_a_pass_not_endless_inconclusive():
-    # every run of both sides under 1 ms: scheduler jitter dominates, and no separated change exists
+def test_noisy_sub_millisecond_measurements_do_not_silently_pass():
+    # Absolute duration never excuses ambiguous high-variance evidence.
     fast = summarize([0.10, 0.13, 0.19, 0.09, 0.22, 0.12, 0.11])
-    assert classify(fast, summarize([0.11, 0.12, 0.18, 0.1, 0.2, 0.13, 0.12]), True) == 'PASS'
-    assert classify(fast, summarize([0.10, 0.30, 0.09, 0.28, 0.11, 0.12, 0.25]), True) == 'PASS'
-    # a separated change is still reported at any scale, and different output is never excused by the floor
+    assert classify(fast, summarize([0.11, 0.12, 0.18, 0.1, 0.2, 0.13, 0.12]), True) == 'INSUFFICIENT_EVIDENCE'
+    assert classify(fast, summarize([0.10, 0.30, 0.09, 0.28, 0.11, 0.12, 0.25]), True) == 'INSUFFICIENT_EVIDENCE'
+    # A separated change is still reported at any scale; different output is always a regression.
     assert classify(fast, summarize([0.9, 0.95, 0.92, 0.91, 0.97, 0.9, 0.93]), True) == 'REGRESSION_DETECTED'
     assert classify(fast, summarize([0.11, 0.12, 0.18, 0.1, 0.2, 0.13, 0.12]), False) == 'REGRESSION_DETECTED'
 
